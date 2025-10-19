@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Calendar, Tag, Folder, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, Tag, Folder, CreditCard as Edit } from 'lucide-react';
 import { api } from '../lib/api';
 import { requireAuth } from '../lib/auth';
 import ImageWithFallback from '../components/ImageWithFallback';
