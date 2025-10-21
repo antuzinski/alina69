@@ -162,7 +162,7 @@ const GamePage: React.FC = () => {
                   <div>Target: <span className="text-emerald-400">{currentRound.target}</span></div>
                   {currentRound.clue && <div>Clue: <span className="text-emerald-400">"{currentRound.clue}"</span></div>}
                   {currentRound.guess !== null && <div>Guess: <span className="text-emerald-400">{currentRound.guess}</span></div>}
-                  {currentRound.score !== null && <div>Score: <span className="text-emerald-400">{currentRound.score}</span></div>}
+                  {currentRound.delta !== null && <div>Delta: <span className="text-emerald-400">{currentRound.delta}</span></div>}
                 </>
               )}
             </div>

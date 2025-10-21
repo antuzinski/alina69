@@ -279,32 +279,12 @@ export const wavelengthApi = {
       // Calculate delta and score
       const delta = Math.abs(guess - currentRound.target);
       
-      // New scoring system:
-      // Perfect hit (0): 100 points
-      // Excellent (1-1): 95 points  
-      // Hit (2-5): 80 points
-      // Close (6-15): 40 points
-      // Miss (16+): 0 points
-      let score: number;
-      if (delta === 0) {
-        score = 100; // Perfect
-      } else if (delta <= 1) {
-        score = 95;  // Excellent
-      } else if (delta <= 5) {
-        score = 80;  // Hit
-      } else if (delta <= 15) {
-        score = 40;  // Close
-      } else {
-        score = 0;   // Miss
-      }
-
       // Update round with guess and results
       const { data: roundData, error: roundError } = await supabase
         .from('wl_rounds')
         .update({
           guess,
           delta,
-          score,
           revealed_at: new Date().toISOString()
         })
         .eq('game_id', 'default')
@@ -372,10 +352,10 @@ export const wavelengthApi = {
     }
   },
 
-  // Get best shots for each player
-  async getBestShots(): Promise<{ playerA: WLRound[]; playerB: WLRound[] }> {
+  // Get recent shots for each player (last 3 guesses)
+  async getRecentShots(): Promise<{ playerA: WLRound[]; playerB: WLRound[] }> {
     try {
-      debugLog('getBestShots called', {});
+      debugLog('getRecentShots called', {});
 
       const { data: rounds, error } = await supabase
         .from('wl_rounds')
@@ -384,9 +364,9 @@ export const wavelengthApi = {
           card:wl_cards(*)
         `)
         .eq('game_id', 'default')
-        .not('score', 'is', null)
-        .order('score', { ascending: false })
-        .limit(20);
+        .not('guess', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (error) throw error;
 
@@ -399,10 +379,10 @@ export const wavelengthApi = {
         .slice(0, 3);
 
       const result = { playerA: playerA as WLRound[], playerB: playerB as WLRound[] };
-      debugLog('getBestShots success', result);
+      debugLog('getRecentShots success', result);
       return result;
     } catch (error) {
-      debugError('getBestShots', error);
+      debugError('getRecentShots', error);
       return { playerA: [], playerB: [] };
     }
   }
