@@ -21,23 +21,22 @@ export const usePlayerRole = (game?: WLGame | null) => {
   useEffect(() => {
     if (!autoSwitch || !game) return;
     
-    // During CLUE_PHASE, switch to the active clue giver
-    // During GUESS_PHASE, switch to the guesser (opposite of clue giver)
+    let targetRole: PlayerRole | null = null;
+    
     if (game.phase === 'CLUE_PHASE') {
-      if (playerRole !== game.active_clue_giver) {
-        console.log('[ROLE] Auto-switching to clue giver:', game.active_clue_giver);
-        setPlayerRole(game.active_clue_giver);
-        localStorage.setItem('wavelength_player_role', game.active_clue_giver);
-      }
+      // During CLUE_PHASE, switch to the active clue giver
+      targetRole = game.active_clue_giver;
     } else if (game.phase === 'GUESS_PHASE') {
-      const guesserRole: PlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A';
-      if (playerRole !== guesserRole) {
-        console.log('[ROLE] Auto-switching to guesser:', guesserRole);
-        setPlayerRole(guesserRole);
-        localStorage.setItem('wavelength_player_role', guesserRole);
-      }
+      // During GUESS_PHASE, switch to the guesser (opposite of clue giver)
+      targetRole = game.active_clue_giver === 'A' ? 'B' : 'A';
     }
-  }, [game?.phase, game?.active_clue_giver, playerRole, autoSwitch]);
+    
+    if (targetRole && playerRole !== targetRole) {
+      console.log(`[ROLE] Auto-switching from ${playerRole} to ${targetRole} for phase ${game.phase}`);
+      setPlayerRole(targetRole);
+      localStorage.setItem('wavelength_player_role', targetRole);
+    }
+  }, [game?.phase, game?.active_clue_giver, autoSwitch, playerRole]);
 
   const switchRole = () => {
     const newRole: PlayerRole = playerRole === 'A' ? 'B' : 'A';
