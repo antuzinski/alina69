@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
-import { Search, FileText, Image, Quote, Settings, LogOut, MessageCircle } from 'lucide-react';
+import { Search, FileText, Image, Gamepad2, Settings, LogOut, MessageCircle } from 'lucide-react';
 import { logout } from '../lib/auth';
 
 const Layout: React.FC = () => {
@@ -85,15 +85,15 @@ const Layout: React.FC = () => {
           </Link>
           
           <Link
-            to="/quotes"
+            to="/game"
             className={`flex flex-col items-center py-3 px-4 text-xs transition-colors ${
-              isActive('/quotes')
+              isActive('/game')
                 ? 'text-emerald-500'
                 : 'text-gray-400 hover:text-gray-300'
             }`}
           >
-            <Quote className="w-5 h-5 mb-1" />
-            <span>Quotes</span>
+            <Gamepad2 className="w-5 h-5 mb-1" />
+            <span>Game</span>
           </Link>
           
           <Link

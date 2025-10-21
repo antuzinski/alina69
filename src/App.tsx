@@ -5,7 +5,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import TextsPage from './pages/TextsPage';
 import ImagesPage from './pages/ImagesPage';
-import QuotesPage from './pages/QuotesPage';
+import GamePage from './pages/GamePage';
 import AdminPage from './pages/AdminPage';
 import ItemDetailPage from './pages/ItemDetailPage';
 import SearchPage from './pages/SearchPage';
@@ -89,7 +89,7 @@ function App() {
             <Route index element={<Navigate to="/texts" replace />} />
             <Route path="texts" element={<TextsPage />} />
             <Route path="images" element={<ImagesPage />} />
-            <Route path="quotes" element={<QuotesPage />} />
+            <Route path="game" element={<GamePage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="item/:id" element={<ItemDetailPage />} />
             <Route path="search" element={<SearchPage />} />
