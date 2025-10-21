@@ -1,4 +1,3 @@
-import React from 'react';
 // import { useWavelengthGame } from '../hooks/useWavelengthGame';
 // import { usePlayerRole } from '../hooks/usePlayerRole';
 // import RoleChip from '../components/wavelength/RoleChip';
@@ -6,6 +5,7 @@ import React from 'react';
 // import CluePanel from '../components/wavelength/CluePanel';
 // import GuessPanel from '../components/wavelength/GuessPanel';
 // import RevealPanel from '../components/wavelength/RevealPanel';
+// import BestShots from '../components/wavelength/BestShots';
 // import BestShots from '../components/wavelength/BestShots';
 
 const GamePage: React.FC = () => {
@@ -72,5 +72,3 @@ const GamePage: React.FC = () => {
     </div>
   );
 };
-
-export default GamePage;
