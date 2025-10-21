@@ -10,11 +10,12 @@ export const usePlayerRole = (game?: WLGame | null) => {
   useEffect(() => {
     // Get role from localStorage or default to 'A'
     const savedRole = localStorage.getItem('wavelength_player_role') as PlayerRole;
-    const savedAutoSwitch = localStorage.getItem('wavelength_auto_switch') === 'true';
+    const savedAutoSwitch = localStorage.getItem('wavelength_auto_switch');
     if (savedRole === 'Алина' || savedRole === 'Юра') {
       setPlayerRole(savedRole);
     }
-    setAutoSwitch(savedAutoSwitch !== false); // Default to true
+    // Default to true if not set, or if explicitly set to 'true'
+    setAutoSwitch(savedAutoSwitch === null || savedAutoSwitch === 'true');
   }, []);
 
   // Auto-switch role based on game phase
