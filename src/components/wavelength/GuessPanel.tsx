@@ -12,7 +12,8 @@ interface GuessPanelProps {
 
 const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole, onLockGuess, isLoading = false }) => {
   const [guess, setGuess] = useState(50);
-  const isGuesser = playerRole !== game.active_clue_giver;
+  const isGuesser = (playerRole === 'Алина' && game.active_clue_giver === 'B') || 
+                    (playerRole === 'Юра' && game.active_clue_giver === 'A');
 
   const handleLockGuess = () => {
     onLockGuess(guess);
@@ -74,7 +75,7 @@ const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole,
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-400">Waiting for Player {playerRole === 'A' ? 'B' : 'A'} to guess...</p>
-          </div>
+          <p className="text-gray-400">Waiting for {isGuesser ? (playerRole === 'Алина' ? 'Юра' : 'Алина') : playerRole} to guess...</p>
         )}
       </div>
     </div>

@@ -13,7 +13,7 @@ const BestShots: React.FC<BestShotsProps> = ({ bestShots }) => {
       
       <div className="space-y-4">
         <div>
-          <h4 className="text-sm font-medium text-emerald-400 mb-2">Player A</h4>
+          <h4 className="text-sm font-medium text-emerald-400 mb-2">Алина</h4>
           {bestShots?.playerA && bestShots.playerA.length > 0 ? (
             <div className="space-y-2">
               {bestShots.playerA.slice(0, 3).map((round, index) => (
@@ -30,7 +30,7 @@ const BestShots: React.FC<BestShotsProps> = ({ bestShots }) => {
         </div>
         
         <div>
-          <h4 className="text-sm font-medium text-emerald-400 mb-2">Player B</h4>
+          <h4 className="text-sm font-medium text-emerald-400 mb-2">Юра</h4>
           {bestShots?.playerB && bestShots.playerB.length > 0 ? (
             <div className="space-y-2">
               {bestShots.playerB.slice(0, 3).map((round, index) => (

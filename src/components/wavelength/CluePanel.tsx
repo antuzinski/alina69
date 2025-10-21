@@ -12,7 +12,8 @@ interface CluePanelProps {
 
 const CluePanel: React.FC<CluePanelProps> = ({ game, currentRound, playerRole, onSubmitClue, isLoading = false }) => {
   const [clue, setClue] = useState('');
-  const isClueGiver = playerRole === game.active_clue_giver;
+  const isClueGiver = (playerRole === 'Алина' && game.active_clue_giver === 'A') || 
+                      (playerRole === 'Юра' && game.active_clue_giver === 'B');
 
   const handleSubmit = () => {
     if (clue.trim()) {
@@ -70,7 +71,7 @@ const CluePanel: React.FC<CluePanelProps> = ({ game, currentRound, playerRole, o
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-400">Waiting for Player {game.active_clue_giver} to give a clue...</p>
+          <p className="text-gray-400">Waiting for {game.active_clue_giver === 'A' ? 'Алина' : 'Юра'} to give a clue...</p>
         </div>
       )}
     </div>

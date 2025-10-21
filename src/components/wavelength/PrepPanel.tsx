@@ -10,14 +10,14 @@ interface PrepPanelProps {
 }
 
 const PrepPanel: React.FC<PrepPanelProps> = ({ game, playerRole, onStartRound, isLoading = false }) => {
-  const nextClueGiver = game.active_clue_giver === 'A' ? 'B' : 'A';
+  const nextClueGiver = game.active_clue_giver === 'A' ? 'Юра' : 'Алина';
 
   return (
     <div className="bg-gray-800 rounded-lg p-8 text-center">
       <h2 className="text-2xl font-bold text-gray-100 mb-4">Ready for Next Round</h2>
       
       <p className="text-gray-400 mb-6">
-        Player {nextClueGiver} will give the next clue
+        {nextClueGiver} will give the next clue
       </p>
       
       <p className="text-gray-500 text-sm mb-4">

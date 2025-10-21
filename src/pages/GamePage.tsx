@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bug } from 'lucide-react';
 import { useWavelengthGame } from '../hooks/useWavelengthGame';
 import { useQuery } from '@tanstack/react-query';
 import { wavelengthApi } from '../lib/wavelengthApi';
@@ -26,6 +27,7 @@ const GamePage: React.FC = () => {
     isGoingToPrep
   } = useWavelengthGame();
   const { playerRole, switchRole, autoSwitch, toggleAutoSwitch } = usePlayerRole(game);
+  const [debugMode, setDebugMode] = React.useState(false);
 
   // Get best shots for sidebar
   const { data: bestShots } = useQuery({
@@ -108,12 +110,26 @@ const GamePage: React.FC = () => {
       <header className="bg-gray-950 border-b border-gray-800 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-semibold">Wavelength</h1>
-          <RoleChip 
-            playerRole={playerRole} 
-            onSwitchRole={switchRole}
-            autoSwitch={autoSwitch}
-            onToggleAutoSwitch={toggleAutoSwitch}
-          />
+          <div className="flex items-center space-x-3">
+            <RoleChip 
+              playerRole={playerRole} 
+              onSwitchRole={switchRole}
+              autoSwitch={autoSwitch}
+              onToggleAutoSwitch={toggleAutoSwitch}
+              debugMode={debugMode}
+            />
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className={`p-2 rounded transition-colors ${
+                debugMode 
+                  ? 'bg-emerald-600 text-white' 
+                  : 'bg-gray-800 text-gray-400 hover:text-gray-300'
+              }`}
+              title="Toggle debug mode"
+            >
+              <Bug className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -132,24 +148,26 @@ const GamePage: React.FC = () => {
         </div>
         
         {/* Debug Info */}
-        <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Debug Info (Step 5 - Real Supabase Integration)</h3>
-          <div className="text-xs text-gray-500 space-y-1">
-            <div>Phase: <span className="text-emerald-400">{game.phase}</span></div>
-            <div>Round: <span className="text-emerald-400">{game.current_round_index}</span></div>
-            <div>Active Clue Giver: <span className="text-emerald-400">Player {game.active_clue_giver}</span></div>
-            <div>Your Role: <span className="text-emerald-400">Player {playerRole}</span></div>
-            {currentRound && (
-              <>
-                <div>Card: <span className="text-emerald-400">{currentRound.card?.left_label} ←→ {currentRound.card?.right_label}</span></div>
-                <div>Target: <span className="text-emerald-400">{currentRound.target}</span></div>
-                {currentRound.clue && <div>Clue: <span className="text-emerald-400">"{currentRound.clue}"</span></div>}
-                {currentRound.guess !== null && <div>Guess: <span className="text-emerald-400">{currentRound.guess}</span></div>}
-                {currentRound.score !== null && <div>Score: <span className="text-emerald-400">{currentRound.score}</span></div>}
-              </>
-            )}
+        {debugMode && (
+          <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-400 mb-2">Debug Info</h3>
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>Phase: <span className="text-emerald-400">{game.phase}</span></div>
+              <div>Round: <span className="text-emerald-400">{game.current_round_index}</span></div>
+              <div>Active Clue Giver: <span className="text-emerald-400">{game.active_clue_giver === 'A' ? 'Алина' : 'Юра'}</span></div>
+              <div>Your Role: <span className="text-emerald-400">{playerRole}</span></div>
+              {currentRound && (
+                <>
+                  <div>Card: <span className="text-emerald-400">{currentRound.card?.left_label} ←→ {currentRound.card?.right_label}</span></div>
+                  <div>Target: <span className="text-emerald-400">{currentRound.target}</span></div>
+                  {currentRound.clue && <div>Clue: <span className="text-emerald-400">"{currentRound.clue}"</span></div>}
+                  {currentRound.guess !== null && <div>Guess: <span className="text-emerald-400">{currentRound.guess}</span></div>}
+                  {currentRound.score !== null && <div>Score: <span className="text-emerald-400">{currentRound.score}</span></div>}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

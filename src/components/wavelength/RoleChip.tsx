@@ -6,18 +6,28 @@ interface RoleChipProps {
   onSwitchRole: () => void;
   autoSwitch: boolean;
   onToggleAutoSwitch: () => void;
+  debugMode: boolean;
 }
 
 const RoleChip: React.FC<RoleChipProps> = ({ 
   playerRole, 
   onSwitchRole, 
   autoSwitch, 
-  onToggleAutoSwitch 
+  onToggleAutoSwitch,
+  debugMode
 }) => {
+  if (!debugMode) {
+    return (
+      <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+        {playerRole}
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center space-x-3">
       <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-        Player {playerRole} {autoSwitch && '(Auto)'}
+        {playerRole} {autoSwitch && '(Auto)'}
       </div>
       
       <div className="flex items-center space-x-2">
