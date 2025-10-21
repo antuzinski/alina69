@@ -25,7 +25,7 @@ const GamePage: React.FC = () => {
     isLockingGuess,
     isGoingToPrep
   } = useWavelengthGame();
-  const { playerRole, switchRole } = usePlayerRole();
+  const { playerRole, switchRole, autoSwitch, toggleAutoSwitch } = usePlayerRole(game);
 
   // Get best shots for sidebar
   const { data: bestShots } = useQuery({
@@ -108,7 +108,12 @@ const GamePage: React.FC = () => {
       <header className="bg-gray-950 border-b border-gray-800 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-semibold">Wavelength</h1>
-          <RoleChip playerRole={playerRole} onSwitchRole={switchRole} />
+          <RoleChip 
+            playerRole={playerRole} 
+            onSwitchRole={switchRole}
+            autoSwitch={autoSwitch}
+            onToggleAutoSwitch={toggleAutoSwitch}
+          />
         </div>
       </header>
 
