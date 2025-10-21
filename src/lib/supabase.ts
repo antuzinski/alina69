@@ -44,6 +44,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'Cache-Control': 'max-age=3600',
+      'apikey': supabaseAnonKey,
     },
   }
 });

@@ -23,7 +23,7 @@ export const useWavelengthGame = () => {
   // Get current round
   const { data: currentRound, isLoading: roundLoading } = useQuery({
     queryKey: ['wavelength-current-round', game?.current_round_index],
-    queryFn: wavelengthApi.getCurrentRound,
+    queryFn: () => wavelengthApi.getCurrentRound(),
     enabled: !!game,
     staleTime: 30 * 1000,
     retry: 3,
@@ -31,7 +31,7 @@ export const useWavelengthGame = () => {
 
   // Mutations for game actions
   const startRoundMutation = useMutation({
-    mutationFn: wavelengthApi.startNewRound,
+    mutationFn: () => wavelengthApi.startNewRound(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wavelength-game'] });
       queryClient.invalidateQueries({ queryKey: ['wavelength-current-round'] });
@@ -39,7 +39,7 @@ export const useWavelengthGame = () => {
   });
 
   const submitClueMutation = useMutation({
-    mutationFn: wavelengthApi.submitClue,
+    mutationFn: (clue: string) => wavelengthApi.submitClue(clue),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wavelength-game'] });
       queryClient.invalidateQueries({ queryKey: ['wavelength-current-round'] });
@@ -47,7 +47,7 @@ export const useWavelengthGame = () => {
   });
 
   const lockGuessMutation = useMutation({
-    mutationFn: wavelengthApi.lockGuess,
+    mutationFn: (guess: number) => wavelengthApi.lockGuess(guess),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wavelength-game'] });
       queryClient.invalidateQueries({ queryKey: ['wavelength-current-round'] });
@@ -55,7 +55,7 @@ export const useWavelengthGame = () => {
   });
 
   const backToPrepMutation = useMutation({
-    mutationFn: wavelengthApi.backToPrep,
+    mutationFn: () => wavelengthApi.backToPrep(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wavelength-game'] });
       queryClient.invalidateQueries({ queryKey: ['wavelength-current-round'] });
