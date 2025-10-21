@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Диагностика env переменных для дебага
 console.log('[SUPABASE] Environment check:', {
@@ -9,31 +9,19 @@ console.log('[SUPABASE] Environment check:', {
   hasKey: !!supabaseAnonKey,
   url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'missing',
   key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 30)}...` : 'missing',
-  fullUrl: supabaseUrl, // Временно для диагностики
+  // Показываем полные значения для диагностики
+  fullUrl: supabaseUrl,
+  fullKey: supabaseAnonKey,
   urlType: typeof supabaseUrl,
   keyType: typeof supabaseAnonKey
 });
 
-// Проверка доступности REST endpoint
-if (supabaseUrl) {
-  const restUrl = `${supabaseUrl}/rest/v1/`;
-  console.log('[SUPABASE] Testing REST endpoint:', restUrl);
-  
-  fetch(restUrl)
-    .then(response => {
-      console.log('[SUPABASE] REST endpoint response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-    })
-    .catch(error => {
-      console.error('[SUPABASE] REST endpoint failed:', error);
-    });
-}
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  console.error('[SUPABASE] Missing environment variables:', {
+    VITE_SUPABASE_URL: supabaseUrl,
+    VITE_SUPABASE_ANON_KEY: supabaseAnonKey ? 'present' : 'missing'
+  });
+  throw new Error(`Missing Supabase environment variables. URL: ${!!supabaseUrl}, Key: ${!!supabaseAnonKey}`);
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -41,12 +29,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
-  global: {
-    headers: {
-      'Cache-Control': 'max-age=3600',
-      'apikey': supabaseAnonKey,
-    },
-  }
 });
 
 console.log('[SUPABASE] Client created successfully');
