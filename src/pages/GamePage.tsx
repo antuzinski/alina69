@@ -72,3 +72,6 @@ const GamePage: React.FC = () => {
     </div>
   );
 };
+
+
+export default GamePage
