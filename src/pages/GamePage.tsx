@@ -148,7 +148,7 @@ const GamePage: React.FC = () => {
           
           {/* Right Rail */}
           <div className="lg:col-span-1">
-            <BestShots bestShots={recentShots} />
+            <BestShots recentShots={recentShots} />
           </div>
         </div>
         
