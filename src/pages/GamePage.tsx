@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bug } from 'lucide-react';
 import { useWavelengthGame } from '../hooks/useWavelengthGame';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { wavelengthApi } from '../lib/wavelengthApi';
 import { usePlayerRole } from '../hooks/usePlayerRole';
 import RoleChip from '../components/wavelength/RoleChip';
@@ -12,6 +12,7 @@ import RevealPanel from '../components/wavelength/RevealPanel';
 import BestShots from '../components/wavelength/BestShots';
 
 const GamePage: React.FC = () => {
+  const queryClient = useQueryClient();
   const { 
     game, 
     currentRound, 
