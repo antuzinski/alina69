@@ -34,7 +34,9 @@ const GamePage: React.FC = () => {
   const { data: recentShots } = useQuery({
     queryKey: ['wavelength-recent-shots'],
     queryFn: wavelengthApi.getRecentShots,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 5 * 1000, // 5 seconds
+    refetchInterval: 10 * 1000, // Refresh every 10 seconds
+    retry: 3,
   });
 
   console.log('[GAME] GamePage mounted - real Supabase integration');
