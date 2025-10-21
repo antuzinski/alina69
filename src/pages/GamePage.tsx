@@ -30,9 +30,9 @@ const GamePage: React.FC = () => {
   const [debugMode, setDebugMode] = React.useState(false);
 
   // Get best shots for sidebar
-  const { data: bestShots } = useQuery({
-    queryKey: ['wavelength-best-shots'],
-    queryFn: wavelengthApi.getBestShots,
+  const { data: recentShots } = useQuery({
+    queryKey: ['wavelength-recent-shots'],
+    queryFn: wavelengthApi.getRecentShots,
     staleTime: 60 * 1000, // 1 minute
   });
 
@@ -143,7 +143,7 @@ const GamePage: React.FC = () => {
           
           {/* Right Rail */}
           <div className="lg:col-span-1">
-            <BestShots bestShots={bestShots} />
+            <BestShots bestShots={recentShots} />
           </div>
         </div>
         
