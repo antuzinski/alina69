@@ -14,6 +14,8 @@ const getResultText = (delta: number): string => {
 };
 
 const RecentShots: React.FC<RecentShotsProps> = ({ recentShots }) => {
+  console.log('[RECENT_SHOTS] Component received data:', recentShots);
+  
   return (
     <div className="bg-gray-800 rounded-lg p-4">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">Recent Shots</h3>

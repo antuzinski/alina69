@@ -374,13 +374,23 @@ export const wavelengthApi = {
 
       if (error) throw error;
 
+      debugLog('getRecentShots raw data', { rounds, count: rounds?.length });
+
       const playerA = (rounds || [])
-        .filter(r => r.guesser_role === 'A')
+        .filter(r => {
+          debugLog('filtering round for player A', { round: r, guesser_role: r.guesser_role });
+          return r.guesser_role === 'A';
+        })
         .slice(0, 3);
       
       const playerB = (rounds || [])
-        .filter(r => r.guesser_role === 'B')
+        .filter(r => {
+          debugLog('filtering round for player B', { round: r, guesser_role: r.guesser_role });
+          return r.guesser_role === 'B';
+        })
         .slice(0, 3);
+
+      debugLog('getRecentShots filtered', { playerA: playerA.length, playerB: playerB.length });
 
       const result = { playerA: playerA as WLRound[], playerB: playerB as WLRound[] };
       debugLog('getRecentShots success', result);
