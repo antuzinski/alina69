@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 
 export interface WavelengthGame {
   id: string;
@@ -15,7 +14,7 @@ export const useWavelengthGame = () => {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // For now, return a mock game state
+    console.log('[WAVELENGTH] Initializing mock game state');
     setGame({
       id: 'default',
       current_round_index: 0,
@@ -26,5 +25,10 @@ export const useWavelengthGame = () => {
     setIsLoading(false);
   }, []);
 
-  return { game, isLoading, error };
+  const updateGameState = (updates: Partial<WavelengthGame>) => {
+    console.log('[WAVELENGTH] Updating game state:', updates);
+    setGame(prev => prev ? { ...prev, ...updates, last_updated_at: new Date().toISOString() } : null);
+  };
+
+  return { game, isLoading, error, updateGameState };
 };
