@@ -10,6 +10,22 @@ interface RevealPanelProps {
   isLoading?: boolean;
 }
 
+const getScoreText = (delta: number): string => {
+  if (delta === 0) return "🎯 ИДЕАЛЬНОЕ ПОПАДАНИЕ!";
+  if (delta <= 1) return "🔥 ОТЛИЧНОЕ ПОПАДАНИЕ!";
+  if (delta <= 5) return "✅ ПОПАДАНИЕ!";
+  if (delta <= 15) return "🟡 Близко, но не совсем";
+  return "❌ Увы, мимо";
+};
+
+const getEncouragementText = (delta: number): string => {
+  if (delta === 0) return "Невероятно! Точно в цель!";
+  if (delta <= 1) return "Потрясающе! Почти идеально!";
+  if (delta <= 5) return "Отлично! Вы попали в зону!";
+  if (delta <= 15) return "Неплохо! Совсем рядом с целью.";
+  return "Не расстраивайтесь, в следующий раз получится лучше!";
+};
+
 const RevealPanel: React.FC<RevealPanelProps> = ({ game, currentRound, playerRole, onBackToPrep, isLoading = false }) => {
   return (
     <div className="bg-gray-800 rounded-lg p-6">
@@ -25,25 +41,21 @@ const RevealPanel: React.FC<RevealPanelProps> = ({ game, currentRound, playerRol
               <p className="text-gray-400 mb-2">Clue: <strong>"{currentRound.clue}"</strong></p>
             )}
             {currentRound.guess !== null && (
-              <p className="text-gray-400 mb-2">Guess: <strong>{currentRound.guess}</strong></p>
-            )}
-            <p className="text-gray-400 mb-2">Target: <strong>{currentRound.target}</strong></p>
-            {currentRound.score !== null && currentRound.delta !== null && (
-              <p className="text-emerald-400 text-lg">
-                Score: <strong>{currentRound.score} points</strong> (Δ = {currentRound.delta})
-              </p>
+              <div className="text-center">
+                <p className="text-emerald-400 text-lg mb-2">
+                  <strong>{getScoreText(currentRound.delta || 0)}</strong>
+                </p>
+                <p className="text-gray-400 text-sm">
+                  Target: {currentRound.target}, Your guess: {currentRound.guess}, Difference: {currentRound.delta}
+                </p>
+              </div>
             )}
           </div>
         )}
         
         <div className="text-center">
           <p className="text-gray-300 mb-4">
-            {currentRound?.delta !== null && (
-              currentRound.delta <= 5 ? "Excellent! Very close to the target." :
-              currentRound.delta <= 15 ? "Good guess! Pretty close." :
-              currentRound.delta <= 30 ? "Not bad, getting warmer." :
-              "Keep trying! You'll get closer next time."
-            )}
+            {currentRound?.delta !== null && getEncouragementText(currentRound.delta)}
           </p>
           <button
             onClick={onBackToPrep}

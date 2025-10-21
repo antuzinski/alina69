@@ -278,7 +278,25 @@ export const wavelengthApi = {
 
       // Calculate delta and score
       const delta = Math.abs(guess - currentRound.target);
-      const score = Math.max(0, 100 - delta);
+      
+      // New scoring system:
+      // Perfect hit (0): 100 points
+      // Excellent (1-1): 95 points  
+      // Hit (2-5): 80 points
+      // Close (6-15): 40 points
+      // Miss (16+): 0 points
+      let score: number;
+      if (delta === 0) {
+        score = 100; // Perfect
+      } else if (delta <= 1) {
+        score = 95;  // Excellent
+      } else if (delta <= 5) {
+        score = 80;  // Hit
+      } else if (delta <= 15) {
+        score = 40;  // Close
+      } else {
+        score = 0;   // Miss
+      }
 
       // Update round with guess and results
       const { data: roundData, error: roundError } = await supabase
