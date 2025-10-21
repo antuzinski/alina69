@@ -3,12 +3,34 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Диагностика env переменных для дебага
 console.log('[SUPABASE] Environment check:', {
   hasUrl: !!supabaseUrl,
   hasKey: !!supabaseAnonKey,
-  url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
-  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'missing'
+  url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'missing',
+  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 30)}...` : 'missing',
+  fullUrl: supabaseUrl, // Временно для диагностики
+  urlType: typeof supabaseUrl,
+  keyType: typeof supabaseAnonKey
 });
+
+// Проверка доступности REST endpoint
+if (supabaseUrl) {
+  const restUrl = `${supabaseUrl}/rest/v1/`;
+  console.log('[SUPABASE] Testing REST endpoint:', restUrl);
+  
+  fetch(restUrl)
+    .then(response => {
+      console.log('[SUPABASE] REST endpoint response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+    })
+    .catch(error => {
+      console.error('[SUPABASE] REST endpoint failed:', error);
+    });
+}
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
