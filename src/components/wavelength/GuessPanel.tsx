@@ -52,15 +52,19 @@ const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole,
                 disabled={isLoading}
               />
               <div className="flex justify-between items-center text-xs text-gray-500">
-                <span>{currentRound?.card?.left_label || 'Left'}</span>
-                <span className="text-gray-400 font-mono">0</span>
+                <div className="flex flex-col items-start">
+                  <span>{currentRound?.card?.left_label || 'Left'}</span>
+                  <span className="text-gray-400 font-mono">0</span>
+                </div>
               </div>
               <div className="flex justify-center">
                 <span className="text-emerald-400 font-bold text-lg">{guess}</span>
               </div>
               <div className="flex justify-between items-center text-xs text-gray-500">
-                <span className="text-gray-400 font-mono">100</span>
-                <span>{currentRound?.card?.right_label || 'Right'}</span>
+                <div className="flex flex-col items-end">
+                  <span>{currentRound?.card?.right_label || 'Right'}</span>
+                  <span className="text-gray-400 font-mono">100</span>
+                </div>
               </div>
             </div>
             <button

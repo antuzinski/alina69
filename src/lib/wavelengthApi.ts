@@ -365,17 +365,18 @@ export const wavelengthApi = {
         `)
         .eq('game_id', 'default')
         .not('guess', 'is', null)
+        .not('revealed_at', 'is', null)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
 
       const playerA = (rounds || [])
-        .filter(r => r.clue_giver_role === 'A')
+        .filter(r => r.guesser_role === 'A')
         .slice(0, 3);
       
       const playerB = (rounds || [])
-        .filter(r => r.clue_giver_role === 'B')
+        .filter(r => r.guesser_role === 'B')
         .slice(0, 3);
 
       const result = { playerA: playerA as WLRound[], playerB: playerB as WLRound[] };

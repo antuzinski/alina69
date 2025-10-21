@@ -11,11 +11,11 @@ interface RevealPanelProps {
 }
 
 const getScoreText = (delta: number): string => {
-  if (delta === 0) return "🎯 ИДЕАЛЬНОЕ ПОПАДАНИЕ!";
-  if (delta <= 1) return "🔥 ОТЛИЧНОЕ ПОПАДАНИЕ!";
-  if (delta <= 5) return "✅ ПОПАДАНИЕ!";
+  if (delta === 0) return "Идеальное попадание";
+  if (delta <= 1) return "Отличное попадание";
+  if (delta <= 5) return "Попадание";
   if (delta <= 15) return "🟡 Близко, но не совсем";
-  return "❌ Увы, мимо";
+  return "Увы, мимо";
 };
 
 const getEncouragementText = (delta: number): string => {
