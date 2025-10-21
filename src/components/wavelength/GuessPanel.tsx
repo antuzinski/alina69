@@ -56,36 +56,36 @@ const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole,
                   <span>{currentRound?.card?.left_label || 'Left'}</span>
                   <span className="text-gray-400 font-mono">0</span>
                 </div>
-              </div>
-              <div className="flex justify-center">
-                <span className="text-emerald-400 font-bold text-lg">{guess}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs text-gray-500">
                 <div className="flex flex-col items-end">
                   <span>{currentRound?.card?.right_label || 'Right'}</span>
                   <span className="text-gray-400 font-mono">100</span>
                 </div>
               </div>
+              <div className="flex justify-center mt-2">
+                <span className="text-emerald-400 font-bold text-lg">{guess}</span>
+              </div>
             </div>
-            <button
-              onClick={handleLockGuess}
-              disabled={isLoading}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded transition-colors flex items-center space-x-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Locking...</span>
-                </>
-              ) : (
-                <span>Lock Guess</span>
-              )}
-            </button>
+            <div className="flex justify-center">
+              <button
+                onClick={handleLockGuess}
+                disabled={isLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded transition-colors flex items-center space-x-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Guessing...</span>
+                  </>
+                ) : (
+                  <span>Guess</span>
+                )}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-400">Waiting for Player {playerRole === 'A' ? 'B' : 'A'} to guess...</p>
-            <p className="text-gray-400">Waiting for {isGuesser ? (playerRole === 'Алина' ? 'Юра' : 'Алина') : playerRole} to guess...</p>
+            <p className="text-gray-400">Waiting for {game.active_clue_giver === 'A' ? 'Юра' : 'Алина'} to guess...</p>
           </div>
         )}
       </div>

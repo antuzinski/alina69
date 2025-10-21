@@ -60,6 +60,8 @@ const GamePage: React.FC = () => {
   const handleLockGuess = async (guess: number) => {
     try {
       await lockGuess(guess);
+      // Force refresh recent shots after guess is locked
+      queryClient.invalidateQueries({ queryKey: ['wavelength-recent-shots'] });
     } catch (error) {
       console.error('[GAME] Error locking guess:', error);
     }

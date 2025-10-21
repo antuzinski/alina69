@@ -310,6 +310,9 @@ export const wavelengthApi = {
 
       if (gameError) throw gameError;
 
+      // Invalidate recent shots cache to refresh immediately
+      // This will be handled by the mutation's onSuccess callback
+
       const result = { game: gameData as WLGame, round: roundData as WLRound };
       debugLog('lockGuess success', result);
       return result;

@@ -54,9 +54,6 @@ const RevealPanel: React.FC<RevealPanelProps> = ({ game, currentRound, playerRol
         )}
         
         <div className="text-center">
-          <p className="text-gray-300 mb-4">
-            {currentRound?.delta !== null && getEncouragementText(currentRound.delta)}
-          </p>
           <button
             onClick={onBackToPrep}
             disabled={isLoading}
