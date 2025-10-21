@@ -30,6 +30,21 @@ const GamePage: React.FC = () => {
   const { playerRole, switchRole, autoSwitch, toggleAutoSwitch } = usePlayerRole(game);
   const [debugMode, setDebugMode] = React.useState(false);
 
+  // Clear game data (for testing)
+  const handleClearGameData = async () => {
+    if (window.confirm('Очистить всю историю игры? Это удалит все раунды.')) {
+      const success = await wavelengthApi.clearAllRounds();
+      if (success) {
+        queryClient.invalidateQueries({ queryKey: ['wavelength-game'] });
+        queryClient.invalidateQueries({ queryKey: ['wavelength-current-round'] });
+        queryClient.invalidateQueries({ queryKey: ['wavelength-recent-shots'] });
+        alert('История игры очищена!');
+      } else {
+        alert('Ошибка при очистке истории');
+      }
+    }
+  };
+
   // Get best shots for sidebar
   const { data: recentShots } = useQuery({
     queryKey: ['wavelength-recent-shots'],
@@ -156,6 +171,14 @@ const GamePage: React.FC = () => {
         {debugMode && (
           <div className="mt-6 p-4 bg-gray-800 rounded-lg">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Debug Info</h3>
+            <div className="mb-4">
+              <button
+                onClick={handleClearGameData}
+                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+              >
+                Clear Game History
+              </button>
+            </div>
             <div className="text-xs text-gray-500 space-y-1">
               <div>Phase: <span className="text-emerald-400">{game.phase}</span></div>
               <div>Round: <span className="text-emerald-400">{game.current_round_index}</span></div>

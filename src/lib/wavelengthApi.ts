@@ -47,6 +47,40 @@ const debugError = (operation: string, error: any) => {
 };
 
 export const wavelengthApi = {
+  // Clear all game rounds (for testing/reset)
+  async clearAllRounds(): Promise<boolean> {
+    try {
+      debugLog('clearAllRounds called', {});
+      
+      // Delete all rounds
+      const { error: roundsError } = await supabase
+        .from('wl_rounds')
+        .delete()
+        .eq('game_id', 'default');
+      
+      if (roundsError) throw roundsError;
+      
+      // Reset game to initial state
+      const { error: gameError } = await supabase
+        .from('wl_game')
+        .update({
+          phase: 'ROUND_PREP',
+          current_round_index: 0,
+          active_clue_giver: 'A',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 'default');
+      
+      if (gameError) throw gameError;
+      
+      debugLog('clearAllRounds success', {});
+      return true;
+    } catch (error) {
+      debugError('clearAllRounds', error);
+      return false;
+    }
+  },
+
   // Get current game state
   async getGame(): Promise<WLGame | null> {
     try {
