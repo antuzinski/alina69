@@ -1,16 +1,14 @@
 import React from 'react';
-// Временно отключаем все импорты, которые могут вызывать getItems
-// import { useWavelengthGame } from '../hooks/useWavelengthGame';
-// import { usePlayerRole } from '../hooks/usePlayerRole';
-// import RoleChip from '../components/wavelength/RoleChip';
-// import PrepPanel from '../components/wavelength/PrepPanel';
-// import CluePanel from '../components/wavelength/CluePanel';
-// import GuessPanel from '../components/wavelength/GuessPanel';
-// import RevealPanel from '../components/wavelength/RevealPanel';
-// import BestShots from '../components/wavelength/BestShots';
+import { useWavelengthGame } from '../hooks/useWavelengthGame';
+import { usePlayerRole } from '../hooks/usePlayerRole';
+import RoleChip from '../components/wavelength/RoleChip';
+import PrepPanel from '../components/wavelength/PrepPanel';
+import CluePanel from '../components/wavelength/CluePanel';
+import GuessPanel from '../components/wavelength/GuessPanel';
+import RevealPanel from '../components/wavelength/RevealPanel';
+import BestShots from '../components/wavelength/BestShots';
 
 const GamePage: React.FC = () => {
-  // Временно убираем все хуки, которые могут дергать старый API
   const { game, isLoading, error, updateGameState } = useWavelengthGame();
   const { playerRole, switchRole } = usePlayerRole();
 
