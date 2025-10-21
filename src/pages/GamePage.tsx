@@ -1,5 +1,7 @@
 import React from 'react';
 import { useWavelengthGame } from '../hooks/useWavelengthGame';
+import { useQuery } from '@tanstack/react-query';
+import { wavelengthApi } from '../lib/wavelengthApi';
 import { usePlayerRole } from '../hooks/usePlayerRole';
 import RoleChip from '../components/wavelength/RoleChip';
 import PrepPanel from '../components/wavelength/PrepPanel';
@@ -9,37 +11,64 @@ import RevealPanel from '../components/wavelength/RevealPanel';
 import BestShots from '../components/wavelength/BestShots';
 
 const GamePage: React.FC = () => {
-  const { game, isLoading, error, updateGameState } = useWavelengthGame();
+  const { 
+    game, 
+    currentRound, 
+    isLoading, 
+    error, 
+    startNewRound,
+    submitClue,
+    lockGuess,
+    backToPrep,
+    isStartingRound,
+    isSubmittingClue,
+    isLockingGuess,
+    isGoingToPrep
+  } = useWavelengthGame();
   const { playerRole, switchRole } = usePlayerRole();
 
-  console.log('[GAME] GamePage mounted - isolated from old API');
+  // Get best shots for sidebar
+  const { data: bestShots } = useQuery({
+    queryKey: ['wavelength-best-shots'],
+    queryFn: wavelengthApi.getBestShots,
+    staleTime: 60 * 1000, // 1 minute
+  });
+
+  console.log('[GAME] GamePage mounted - real Supabase integration');
   console.log('[GAME] Current game state:', game);
+  console.log('[GAME] Current round:', currentRound);
 
-  // Шаг 3: Локальные переходы стейт-машины
-  const handleStartRound = () => {
-    if (!game) return;
-    
-    console.log('[WAVELENGTH] Local transition: ROUND_PREP → CLUE_PHASE');
-    updateGameState({
-      phase: 'CLUE_PHASE',
-      current_round_index: game.current_round_index + 1,
-      active_clue_giver: game.active_clue_giver === 'A' ? 'B' : 'A'
-    });
+  // Action handlers
+  const handleStartRound = async () => {
+    try {
+      await startNewRound();
+    } catch (error) {
+      console.error('[GAME] Error starting round:', error);
+    }
   };
 
-  const handleSubmitClue = () => {
-    console.log('[WAVELENGTH] Local transition: CLUE_PHASE → GUESS_PHASE');
-    updateGameState({ phase: 'GUESS_PHASE' });
+  const handleSubmitClue = async (clue: string) => {
+    try {
+      await submitClue(clue);
+    } catch (error) {
+      console.error('[GAME] Error submitting clue:', error);
+    }
   };
 
-  const handleLockGuess = () => {
-    console.log('[WAVELENGTH] Local transition: GUESS_PHASE → REVEAL');
-    updateGameState({ phase: 'REVEAL' });
+  const handleLockGuess = async (guess: number) => {
+    try {
+      await lockGuess(guess);
+    } catch (error) {
+      console.error('[GAME] Error locking guess:', error);
+    }
   };
 
-  const handleBackToPrep = () => {
-    console.log('[WAVELENGTH] Local transition: REVEAL → ROUND_PREP');
-    updateGameState({ phase: 'ROUND_PREP' });
+  const handleBackToPrep = async () => {
+    try {
+      await backToPrep();
+    } catch (error) {
+      console.error('[GAME] Error going to prep:', error);
+    }
   };
 
   if (isLoading) {
@@ -61,13 +90,13 @@ const GamePage: React.FC = () => {
   const renderMainPanel = () => {
     switch (game.phase) {
       case 'ROUND_PREP':
-        return <PrepPanel game={game} playerRole={playerRole} onStartRound={handleStartRound} />;
+        return <PrepPanel game={game} playerRole={playerRole} onStartRound={handleStartRound} isLoading={isStartingRound} />;
       case 'CLUE_PHASE':
-        return <CluePanel game={game} playerRole={playerRole} onSubmitClue={handleSubmitClue} />;
+        return <CluePanel game={game} currentRound={currentRound} playerRole={playerRole} onSubmitClue={handleSubmitClue} isLoading={isSubmittingClue} />;
       case 'GUESS_PHASE':
-        return <GuessPanel game={game} playerRole={playerRole} onLockGuess={handleLockGuess} />;
+        return <GuessPanel game={game} currentRound={currentRound} playerRole={playerRole} onLockGuess={handleLockGuess} isLoading={isLockingGuess} />;
       case 'REVEAL':
-        return <RevealPanel game={game} playerRole={playerRole} onBackToPrep={handleBackToPrep} />;
+        return <RevealPanel game={game} currentRound={currentRound} playerRole={playerRole} onBackToPrep={handleBackToPrep} isLoading={isGoingToPrep} />;
       default:
         return <div className="text-red-400">Unknown game phase: {game.phase}</div>;
     }
@@ -93,18 +122,27 @@ const GamePage: React.FC = () => {
           
           {/* Right Rail */}
           <div className="lg:col-span-1">
-            <BestShots />
+            <BestShots bestShots={bestShots} />
           </div>
         </div>
         
         {/* Debug Info */}
         <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Debug Info (Step 3 - Local State Machine)</h3>
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Debug Info (Step 5 - Real Supabase Integration)</h3>
           <div className="text-xs text-gray-500 space-y-1">
             <div>Phase: <span className="text-emerald-400">{game.phase}</span></div>
             <div>Round: <span className="text-emerald-400">{game.current_round_index}</span></div>
             <div>Active Clue Giver: <span className="text-emerald-400">Player {game.active_clue_giver}</span></div>
             <div>Your Role: <span className="text-emerald-400">Player {playerRole}</span></div>
+            {currentRound && (
+              <>
+                <div>Card: <span className="text-emerald-400">{currentRound.card?.left_label} ←→ {currentRound.card?.right_label}</span></div>
+                <div>Target: <span className="text-emerald-400">{currentRound.target}</span></div>
+                {currentRound.clue && <div>Clue: <span className="text-emerald-400">"{currentRound.clue}"</span></div>}
+                {currentRound.guess !== null && <div>Guess: <span className="text-emerald-400">{currentRound.guess}</span></div>}
+                {currentRound.score !== null && <div>Score: <span className="text-emerald-400">{currentRound.score}</span></div>}
+              </>
+            )}
           </div>
         </div>
       </main>

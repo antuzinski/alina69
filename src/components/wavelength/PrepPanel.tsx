@@ -1,19 +1,15 @@
 import React from 'react';
-import { WavelengthGame } from '../../hooks/useWavelengthGame';
+import { WLGame } from '../../lib/wavelengthApi';
 import { PlayerRole } from '../../hooks/usePlayerRole';
 
 interface PrepPanelProps {
-  game: WavelengthGame;
+  game: WLGame;
   playerRole: PlayerRole;
   onStartRound: () => void;
+  isLoading?: boolean;
 }
 
-const PrepPanel: React.FC<PrepPanelProps> = ({ game, playerRole, onStartRound }) => {
-  const handleStartRound = () => {
-    console.log('[WAVELENGTH] Starting new round - local state transition');
-    onStartRound();
-  };
-
+const PrepPanel: React.FC<PrepPanelProps> = ({ game, playerRole, onStartRound, isLoading = false }) => {
   const nextClueGiver = game.active_clue_giver === 'A' ? 'B' : 'A';
 
   return (
@@ -29,10 +25,18 @@ const PrepPanel: React.FC<PrepPanelProps> = ({ game, playerRole, onStartRound })
       </p>
       
       <button
-        onClick={handleStartRound}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors text-lg"
+        onClick={onStartRound}
+        disabled={isLoading}
+        className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-8 rounded-lg transition-colors text-lg flex items-center space-x-2"
       >
-        Start Next Round
+        {isLoading ? (
+          <>
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span>Starting...</span>
+          </>
+        ) : (
+          <span>Start Next Round</span>
+        )}
       </button>
     </div>
   );

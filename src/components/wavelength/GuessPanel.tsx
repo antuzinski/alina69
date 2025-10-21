@@ -1,25 +1,41 @@
 import React from 'react';
-import { WavelengthGame } from '../../hooks/useWavelengthGame';
+import React, { useState } from 'react';
+import { WLGame, WLRound } from '../../lib/wavelengthApi';
 import { PlayerRole } from '../../hooks/usePlayerRole';
 
 interface GuessPanelProps {
-  game: WavelengthGame;
+  game: WLGame;
+  currentRound: WLRound | null;
   playerRole: PlayerRole;
-  onLockGuess: () => void;
+  onLockGuess: (guess: number) => void;
+  isLoading?: boolean;
 }
 
-const GuessPanel: React.FC<GuessPanelProps> = ({ game, playerRole, onLockGuess }) => {
+const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole, onLockGuess, isLoading = false }) => {
+  const [guess, setGuess] = useState(50);
   const isGuesser = playerRole !== game.active_clue_giver;
+
+  const handleLockGuess = () => {
+    onLockGuess(guess);
+  };
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <h2 className="text-xl font-bold text-gray-100 mb-4">Guess Phase</h2>
       
       <div className="space-y-4">
-        <div className="bg-gray-700 p-4 rounded">
-          <p className="text-gray-300 mb-2">Card: <strong>Hot ←→ Cold</strong></p>
-          <p className="text-emerald-400 mb-2">Clue: <strong>"Summer"</strong></p>
-        </div>
+        {currentRound?.card && (
+          <div className="bg-gray-700 p-4 rounded">
+            <p className="text-gray-300 mb-2">
+              Card: <strong>{currentRound.card.left_label} ←→ {currentRound.card.right_label}</strong>
+            </p>
+            {currentRound.clue && (
+              <p className="text-emerald-400 mb-2">
+                Clue: <strong>"{currentRound.clue}"</strong>
+              </p>
+            )}
+          </div>
+        )}
         
         {isGuesser ? (
           <div className="space-y-4">
@@ -30,19 +46,30 @@ const GuessPanel: React.FC<GuessPanelProps> = ({ game, playerRole, onLockGuess }
                 type="range"
                 min="0"
                 max="100"
-                defaultValue="50"
-                className="w-full"
+                value={guess}
+                onChange={(e) => setGuess(parseInt(e.target.value))}
+                className="w-full accent-emerald-500"
+                disabled={isLoading}
               />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Cold (0)</span>
-                <span>Hot (100)</span>
+              <div className="flex justify-between items-center text-xs text-gray-500">
+                <span>{currentRound?.card?.left_label || 'Left'} (0)</span>
+                <span className="text-emerald-400 font-bold text-lg">{guess}</span>
+                <span>{currentRound?.card?.right_label || 'Right'} (100)</span>
               </div>
             </div>
             <button
-              onClick={onLockGuess}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded transition-colors"
+              onClick={handleLockGuess}
+              disabled={isLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded transition-colors flex items-center space-x-2"
             >
-              Lock Guess
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Locking...</span>
+                </>
+              ) : (
+                <span>Lock Guess</span>
+              )}
             </button>
           </div>
         ) : (
