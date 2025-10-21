@@ -14,8 +14,8 @@ export const usePlayerRole = (game?: WLGame | null) => {
     if (savedRole === 'Алина' || savedRole === 'Юра') {
       setPlayerRole(savedRole);
     }
-    // Default to true if not set, or if explicitly set to 'true'
-    setAutoSwitch(savedAutoSwitch === null || savedAutoSwitch === 'true');
+    // Default to true if not set
+    setAutoSwitch(savedAutoSwitch !== 'false');
   }, []);
 
   // Auto-switch role based on game phase
