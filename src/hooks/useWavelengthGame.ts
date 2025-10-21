@@ -24,7 +24,7 @@ export const useWavelengthGame = () => {
   const { data: currentRound, isLoading: roundLoading } = useQuery({
     queryKey: ['wavelength-current-round', game?.current_round_index],
     queryFn: () => wavelengthApi.getCurrentRound(),
-    enabled: !!game,
+    enabled: !!game && game.current_round_index > 0,
     staleTime: 30 * 1000,
     retry: 3,
   });
