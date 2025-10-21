@@ -75,7 +75,8 @@ const GuessPanel: React.FC<GuessPanelProps> = ({ game, currentRound, playerRole,
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-400">Waiting for Player {playerRole === 'A' ? 'B' : 'A'} to guess...</p>
-          <p className="text-gray-400">Waiting for {isGuesser ? (playerRole === 'Алина' ? 'Юра' : 'Алина') : playerRole} to guess...</p>
+            <p className="text-gray-400">Waiting for {isGuesser ? (playerRole === 'Алина' ? 'Юра' : 'Алина') : playerRole} to guess...</p>
+          </div>
         )}
       </div>
     </div>
