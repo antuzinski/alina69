@@ -200,7 +200,7 @@ export const wavelengthApi = {
 
       const target = Math.floor(Math.random() * 101); // 0-100
       const newRoundIndex = game.current_round_index + 1;
-      const newClueGiver: WLPlayerRole = game.active_clue_giver; // Keep the same clue giver as announced in ROUND_PREP
+      const newClueGiver: WLPlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A'; // Switch to next player
       const guesser: WLPlayerRole = newClueGiver === 'A' ? 'B' : 'A';
 
       // Create new round
@@ -373,6 +373,7 @@ export const wavelengthApi = {
         .from('wl_game')
         .update({
           phase: 'ROUND_PREP',
+          active_clue_giver: game.active_clue_giver === 'A' ? 'B' : 'A', // Switch to next player for next round
           updated_at: new Date().toISOString()
         })
         .eq('id', 'default')
