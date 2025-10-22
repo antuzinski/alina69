@@ -24,6 +24,10 @@ export const usePlayerRole = (game?: WLGame | null) => {
     
     let targetRole: PlayerRole | null = null;
     
+    if (game.phase === 'ROUND_PREP') {
+      // During ROUND_PREP, switch to the player who will give the clue
+      targetRole = game.active_clue_giver === 'A' ? 'Алина' : 'Юра';
+    } else 
     if (game.phase === 'CLUE_PHASE') {
       // During CLUE_PHASE, switch to the active clue giver
       targetRole = game.active_clue_giver === 'A' ? 'Алина' : 'Юра';
