@@ -200,7 +200,7 @@ export const wavelengthApi = {
 
       const target = Math.floor(Math.random() * 101); // 0-100
       const newRoundIndex = game.current_round_index + 1;
-      const newClueGiver: WLPlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A';
+      const newClueGiver: WLPlayerRole = game.active_clue_giver; // Keep the same clue giver as announced in ROUND_PREP
       const guesser: WLPlayerRole = newClueGiver === 'A' ? 'B' : 'A';
 
       // Create new round
@@ -368,15 +368,11 @@ export const wavelengthApi = {
         throw new Error(`Cannot go to prep from phase: ${game.phase}`);
       }
 
-      // Switch to next clue giver for the next round
-      const nextClueGiver: WLPlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A';
-
       // Update game phase
       const { data: gameData, error: gameError } = await supabase
         .from('wl_game')
         .update({
           phase: 'ROUND_PREP',
-          active_clue_giver: nextClueGiver,
           updated_at: new Date().toISOString()
         })
         .eq('id', 'default')
