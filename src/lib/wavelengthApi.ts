@@ -200,8 +200,8 @@ export const wavelengthApi = {
 
       const target = Math.floor(Math.random() * 101); // 0-100
       const newRoundIndex = game.current_round_index + 1;
-      const newClueGiver: WLPlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A'; // Switch to next player
-      const guesser: WLPlayerRole = newClueGiver === 'A' ? 'B' : 'A';
+      const clueGiver: WLPlayerRole = game.active_clue_giver; // Keep current clue giver
+      const guesser: WLPlayerRole = clueGiver === 'A' ? 'B' : 'A';
 
       // Create new round
       const { data: roundData, error: roundError } = await supabase
@@ -211,7 +211,7 @@ export const wavelengthApi = {
           round_index: newRoundIndex,
           card_id: card.id,
           target,
-          clue_giver_role: newClueGiver,
+          clue_giver_role: clueGiver,
           guesser_role: guesser,
           is_best_shot: false
         })
@@ -229,7 +229,7 @@ export const wavelengthApi = {
         .update({
           phase: 'CLUE_PHASE',
           current_round_index: newRoundIndex,
-          active_clue_giver: newClueGiver,
+          active_clue_giver: clueGiver,
           updated_at: new Date().toISOString()
         })
         .eq('id', 'default')
