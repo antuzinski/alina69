@@ -368,11 +368,15 @@ export const wavelengthApi = {
         throw new Error(`Cannot go to prep from phase: ${game.phase}`);
       }
 
+      // Switch to next clue giver for the next round
+      const nextClueGiver: WLPlayerRole = game.active_clue_giver === 'A' ? 'B' : 'A';
+
       // Update game phase
       const { data: gameData, error: gameError } = await supabase
         .from('wl_game')
         .update({
           phase: 'ROUND_PREP',
+          active_clue_giver: nextClueGiver,
           updated_at: new Date().toISOString()
         })
         .eq('id', 'default')
