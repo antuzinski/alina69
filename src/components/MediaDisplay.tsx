@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, AlertCircle } from 'lucide-react';
 import { storage } from '../lib/storage';
 import { MediaType } from '../lib/supabase';
-import VideoPlayer from './VideoPlayer';
 
 interface MediaDisplayProps {
   src: string;
@@ -68,8 +67,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     setIsLoading(true);
     setIsPlaying(false);
     setCanPlay(false);
-    setIsMuted(!isIOS); // iOS requires user interaction, so start unmuted on iOS
-  }, [src, mediaUrl, mediaType]);
+    setIsMuted(false); // Start with sound enabled
+  }, [src, mediaUrl, mediaType, isIOS]);
 
   // Video event handlers
   const handleVideoLoadStart = () => {
@@ -235,7 +234,59 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   // Render based on media type
   switch (mediaType) {
     case 'video':
-      return <VideoPlayer url={mediaUrl} className={className} />;
+      return (
+        <div className={`relative ${className}`}>
+          <LoadingOverlay />
+
+          <video
+            ref={videoRef}
+            src={mediaUrl}
+            className={`w-full h-full ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+            controls={showControls}
+            preload="auto"
+            playsInline
+            crossOrigin="anonymous"
+            onLoadStart={handleVideoLoadStart}
+            onCanPlay={handleVideoCanPlay}
+            onError={handleVideoError}
+            onPlay={handleVideoPlay}
+            onPause={handleVideoPause}
+            onLoadedMetadata={() => {
+              console.log('[MEDIA] Video metadata loaded');
+              if (isIOS && videoRef.current) {
+                videoRef.current.currentTime = 0.1;
+              }
+            }}
+            style={{ backgroundColor: '#1f2937' }}
+          >
+            Ваш браузер не поддерживает воспроизведение видео.
+          </video>
+
+          {/* Custom controls overlay */}
+          {!showControls && canPlay && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black bg-opacity-30">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={togglePlayPause}
+                  className="bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-colors"
+                  disabled={!canPlay}
+                >
+                  {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                </button>
+
+                <button
+                  onClick={toggleMute}
+                  className="bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-colors"
+                  disabled={!canPlay}
+                >
+                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
 
     case 'gif':
       return (
