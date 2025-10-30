@@ -243,9 +243,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             src={mediaUrl}
             className={`w-full h-full ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
             controls={showControls}
-            preload="auto"
+            preload="metadata"
             playsInline
-            crossOrigin="anonymous"
             onLoadStart={handleVideoLoadStart}
             onCanPlay={handleVideoCanPlay}
             onError={handleVideoError}
