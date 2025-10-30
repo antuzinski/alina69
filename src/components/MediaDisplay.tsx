@@ -68,6 +68,16 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     setIsPlaying(false);
     setCanPlay(false);
     setIsMuted(false); // Start with sound enabled
+
+    // For iOS Safari, force video to load immediately
+    if (isIOS && mediaType === 'video' && videoRef.current) {
+      console.log('[MEDIA] iOS: Force loading video');
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.load();
+        }
+      }, 100);
+    }
   }, [src, mediaUrl, mediaType, isIOS]);
 
   // Video event handlers
@@ -82,11 +92,6 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     setCanPlay(true);
     setIsLoading(false);
     setHasError(false);
-    
-    // On iOS, try to prepare for playback
-    if (isIOS && videoRef.current) {
-      videoRef.current.load();
-    }
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -245,6 +250,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             controls={showControls}
             preload="metadata"
             playsInline
+            webkit-playsinline="true"
+            x5-playsinline="true"
             onLoadStart={handleVideoLoadStart}
             onCanPlay={handleVideoCanPlay}
             onError={handleVideoError}
@@ -253,7 +260,26 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             onLoadedMetadata={() => {
               console.log('[MEDIA] Video metadata loaded');
               if (isIOS && videoRef.current) {
-                videoRef.current.currentTime = 0.1;
+                videoRef.current.currentTime = 0.01;
+              }
+            }}
+            onSuspend={() => {
+              console.log('[MEDIA] Video suspended (network idle)');
+            }}
+            onStalled={() => {
+              console.log('[MEDIA] Video stalled');
+              if (isIOS && videoRef.current) {
+                console.log('[MEDIA] iOS: Attempting to resume after stall');
+                videoRef.current.load();
+              }
+            }}
+            onWaiting={() => {
+              console.log('[MEDIA] Video waiting for data');
+            }}
+            onProgress={() => {
+              if (videoRef.current && videoRef.current.buffered.length > 0) {
+                const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+                console.log('[MEDIA] Video buffered:', bufferedEnd, 'of', videoRef.current.duration);
               }
             }}
             style={{ backgroundColor: '#1f2937' }}
