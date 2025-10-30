@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Folder, ArrowLeft, Search, Plus, Play } from 'lucide-react';
+import { Folder, ArrowLeft, Search, Plus, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import ImageWithFallback from '../components/ImageWithFallback';
 import { api } from '../lib/api';
@@ -13,6 +13,8 @@ const ImagesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 1500);
   const currentFolderId = searchParams.get('folder');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   
   // Get folders
   const { data: folders } = useQuery({
@@ -32,16 +34,46 @@ const ImagesPage: React.FC = () => {
 
   // Get images in current folder
   const { data, isLoading, error } = useQuery({
-    queryKey: ['items', 'image', currentFolderId, debouncedSearchQuery],
-    queryFn: () => api.getItems({ 
-      type: 'image', 
-      folder: currentFolderId || undefined,
-      q: debouncedSearchQuery || undefined,
-      limit: 20 // Reduce initial load for mobile
-    }),
-    staleTime: 10 * 60 * 1000, // Longer cache for images
+    queryKey: ['items', 'image', currentFolderId, debouncedSearchQuery, currentPage],
+    queryFn: async () => {
+      if (debouncedSearchQuery) {
+        // For search, get all results without pagination
+        return api.getItems({
+          type: 'image',
+          folder: currentFolderId || undefined,
+          q: debouncedSearchQuery,
+          limit: 500
+        });
+      } else {
+        // For normal browsing, get specific page
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        return api.getItems({
+          type: 'image',
+          folder: currentFolderId || undefined,
+          limit: ITEMS_PER_PAGE + offset + ITEMS_PER_PAGE,
+        }).then(response => {
+          // Simulate offset by slicing the results
+          const allItems = response.data.items || [];
+          const pageItems = allItems.slice(offset, offset + ITEMS_PER_PAGE);
+
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              items: pageItems
+            }
+          };
+        });
+      }
+    },
+    staleTime: 10 * 60 * 1000,
     retry: 2,
   });
+
+  // Reset to page 1 when search or folder changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, currentFolderId]);
 
   const handleFolderClick = (folderId: string) => {
     setSearchParams({ folder: folderId });
@@ -88,6 +120,56 @@ const ImagesPage: React.FC = () => {
   }
 
   const items = data?.data.items || [];
+  const totalCount = data?.meta?.count || 0;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const hasSearch = !!debouncedSearchQuery;
+
+  // Pagination helpers
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 7;
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+        if (totalPages > 6) {
+          pages.push('...');
+          pages.push(totalPages);
+        }
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1);
+        if (totalPages > 6) {
+          pages.push('...');
+        }
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   // Build breadcrumb path
   const buildBreadcrumb = () => {
@@ -199,15 +281,30 @@ const ImagesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Results count */}
-      {debouncedSearchQuery && (
-        <div className="mb-4 text-sm text-gray-400">
-          Найдено: {items.length} медиа-файлов
-          {searchQuery !== debouncedSearchQuery && (
-            <span className="ml-2 text-yellow-500">Поиск...</span>
+      {/* Results info */}
+      <div className="mb-4 flex items-center justify-between text-sm text-gray-400">
+        <div>
+          {hasSearch ? (
+            <>
+              Найдено: {items.length} из {totalCount} медиа-файлов
+              {searchQuery !== debouncedSearchQuery && (
+                <span className="ml-2 text-yellow-500">Поиск...</span>
+              )}
+            </>
+          ) : (
+            <>
+              Страница {currentPage} из {totalPages}
+              <span className="ml-2">({totalCount} медиа-файлов всего)</span>
+            </>
           )}
         </div>
-      )}
+
+        {!hasSearch && totalPages > 1 && (
+          <div className="text-xs text-gray-500">
+            Показано {Math.min(ITEMS_PER_PAGE, items.length)} из {ITEMS_PER_PAGE}
+          </div>
+        )}
+      </div>
 
       {/* Images Grid */}
       {items.length === 0 && subfolders.length === 0 ? (
@@ -231,13 +328,13 @@ const ImagesPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div>
+        <>
           {items.length > 0 && (
             <>
               <h3 className="text-lg font-semibold text-gray-100 mb-3">
                 {debouncedSearchQuery ? 'Результаты поиска' : 'Медиа-файлы'}
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-8">
                 {items.map((item) => (
                   <Link
                     key={item.id}
@@ -257,7 +354,7 @@ const ImagesPage: React.FC = () => {
                         <span className="text-sm">No Image</span>
                       </div>
                     )}
-                    
+
                     {/* Overlay with title */}
                     {item.title && (
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
@@ -268,7 +365,7 @@ const ImagesPage: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Media type indicator */}
                     {item.media_type === 'video' && (
                       <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded flex items-center space-x-1">
@@ -276,7 +373,7 @@ const ImagesPage: React.FC = () => {
                         <span>VIDEO</span>
                       </div>
                     )}
-                    
+
                     {item.media_type === 'gif' && (
                       <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
                         GIF
@@ -287,7 +384,61 @@ const ImagesPage: React.FC = () => {
               </div>
             </>
           )}
-        </div>
+
+          {/* Pagination - only show for normal browsing, not search */}
+          {!hasSearch && totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2">
+              {/* Previous button */}
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 hover:text-white transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Назад</span>
+              </button>
+
+              {/* Page numbers */}
+              <div className="flex items-center space-x-1">
+                {getPageNumbers().map((page, index) => (
+                  <React.Fragment key={index}>
+                    {page === '...' ? (
+                      <span className="px-3 py-2 text-gray-500">...</span>
+                    ) : (
+                      <button
+                        onClick={() => goToPage(page as number)}
+                        className={`px-3 py-2 rounded-lg transition-colors ${
+                          currentPage === page
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Next button */}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-300 hover:text-white transition-colors"
+              >
+                <span className="hidden sm:inline">Вперед</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Page info for mobile */}
+          {!hasSearch && totalPages > 1 && (
+            <div className="text-center mt-4 text-xs text-gray-500">
+              Страница {currentPage} из {totalPages}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
