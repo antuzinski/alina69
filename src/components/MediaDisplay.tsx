@@ -28,67 +28,30 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const [isMuted, setIsMuted] = useState(true);
   const [canPlay, setCanPlay] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isIOS, setIsIOS] = useState(false);
 
-  // Detect iOS
-  useEffect(() => {
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
-    console.log('[MEDIA] iOS detected:', iOS);
-  }, []);
-
-  // Get the media URL
   const getMediaUrl = () => {
     if (!src) return '';
-    
-    // If it's already a full URL, return as is
     if (src.startsWith('http') || src.startsWith('data:')) {
       return src;
     }
-    
-    // Convert storage path to public URL
-    const url = storage.getPublicUrl(src);
-    
-    // Add cache control for mobile networks
-    if (url.includes('supabase')) {
-      const separator = url.includes('?') ? '&' : '?';
-      return `${url}${separator}cache=3600`;
-    }
-    
-    return url;
+    return storage.getPublicUrl(src);
   };
-  
+
   const mediaUrl = getMediaUrl();
 
-  // Reset states when src changes
   useEffect(() => {
-    console.log('[MEDIA] Source changed:', { src, mediaUrl, mediaType });
     setHasError(false);
     setIsLoading(true);
     setIsPlaying(false);
     setCanPlay(false);
-    setIsMuted(false); // Start with sound enabled
+  }, [src, mediaUrl]);
 
-    // For iOS Safari, force video to load immediately
-    if (isIOS && mediaType === 'video' && videoRef.current) {
-      console.log('[MEDIA] iOS: Force loading video');
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.load();
-        }
-      }, 100);
-    }
-  }, [src, mediaUrl, mediaType, isIOS]);
-
-  // Video event handlers
   const handleVideoLoadStart = () => {
-    console.log('[MEDIA] Video load started');
     setIsLoading(true);
     setHasError(false);
   };
 
   const handleVideoCanPlay = () => {
-    console.log('[MEDIA] Video can play');
     setCanPlay(true);
     setIsLoading(false);
     setHasError(false);
@@ -100,11 +63,9 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     console.error('[MEDIA] Video error:', {
       code: error?.code,
       message: error?.message,
-      src: video.src,
-      networkState: video.networkState,
-      readyState: video.readyState
+      src: video.src
     });
-    
+
     setHasError(true);
     setIsLoading(false);
     setCanPlay(false);
@@ -112,47 +73,21 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   };
 
   const handleVideoPlay = () => {
-    console.log('[MEDIA] Video started playing');
     setIsPlaying(true);
   };
 
   const handleVideoPause = () => {
-    console.log('[MEDIA] Video paused');
     setIsPlaying(false);
   };
 
-  // Play/Pause handler
   const togglePlayPause = async () => {
     const video = videoRef.current;
-    if (!video) {
-      console.error('[MEDIA] Video element not found');
-      return;
-    }
-
-    console.log('[MEDIA] Toggle play/pause clicked', {
-      paused: video.paused,
-      currentTime: video.currentTime,
-      duration: video.duration,
-      readyState: video.readyState,
-      canPlay
-    });
+    if (!video) return;
 
     try {
       if (video.paused) {
-        console.log('[MEDIA] Attempting to play video');
-        
-        // On iOS, ensure video is loaded
-        if (isIOS && video.readyState < 2) {
-          console.log('[MEDIA] iOS: Loading video first');
-          video.load();
-          await new Promise(resolve => {
-            video.addEventListener('canplay', resolve, { once: true });
-          });
-        }
-        
         await video.play();
       } else {
-        console.log('[MEDIA] Pausing video');
         video.pause();
       }
     } catch (error) {
@@ -160,47 +95,36 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     }
   };
 
-  // Mute/Unmute handler
   const toggleMute = () => {
     const video = videoRef.current;
-    if (!video) {
-      console.error('[MEDIA] Video element not found for mute toggle');
-      return;
-    }
+    if (!video) return;
 
     const newMutedState = !video.muted;
     video.muted = newMutedState;
     setIsMuted(newMutedState);
-    console.log('[MEDIA] Mute toggled:', newMutedState);
   };
 
-  // Force reload
   const forceReload = () => {
-    console.log('[MEDIA] Force reloading media...');
     setIsLoading(true);
     setHasError(false);
     setCanPlay(false);
-    
+
     if (videoRef.current) {
       videoRef.current.load();
     }
   };
 
-  // Handle general media errors (for images)
   const handleMediaError = () => {
-    console.log('[MEDIA] Media failed to load:', mediaUrl);
     setHasError(true);
     setIsLoading(false);
     onError?.();
   };
 
   const handleMediaLoad = () => {
-    console.log('[MEDIA] Media loaded successfully');
     setIsLoading(false);
     setHasError(false);
   };
 
-  // Empty source
   if (!src) {
     return (
       <div className={`bg-gray-800 flex items-center justify-center ${className}`}>
@@ -209,7 +133,6 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     );
   }
 
-  // Error state
   if (hasError) {
     return (
       <div className={`bg-gray-800 flex items-center justify-center ${className}`}>
@@ -227,7 +150,6 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     );
   }
 
-  // Loading overlay
   const LoadingOverlay = () => (
     isLoading && (
       <div className="absolute inset-0 bg-gray-800 animate-pulse flex items-center justify-center">
@@ -236,7 +158,6 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     )
   );
 
-  // Render based on media type
   switch (mediaType) {
     case 'video':
       return (
@@ -250,44 +171,16 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             controls={showControls}
             preload="metadata"
             playsInline
-            webkit-playsinline="true"
-            x5-playsinline="true"
             onLoadStart={handleVideoLoadStart}
             onCanPlay={handleVideoCanPlay}
             onError={handleVideoError}
             onPlay={handleVideoPlay}
             onPause={handleVideoPause}
-            onLoadedMetadata={() => {
-              console.log('[MEDIA] Video metadata loaded');
-              if (isIOS && videoRef.current) {
-                videoRef.current.currentTime = 0.01;
-              }
-            }}
-            onSuspend={() => {
-              console.log('[MEDIA] Video suspended (network idle)');
-            }}
-            onStalled={() => {
-              console.log('[MEDIA] Video stalled');
-              if (isIOS && videoRef.current) {
-                console.log('[MEDIA] iOS: Attempting to resume after stall');
-                videoRef.current.load();
-              }
-            }}
-            onWaiting={() => {
-              console.log('[MEDIA] Video waiting for data');
-            }}
-            onProgress={() => {
-              if (videoRef.current && videoRef.current.buffered.length > 0) {
-                const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
-                console.log('[MEDIA] Video buffered:', bufferedEnd, 'of', videoRef.current.duration);
-              }
-            }}
             style={{ backgroundColor: '#1f2937' }}
           >
             Ваш браузер не поддерживает воспроизведение видео.
           </video>
 
-          {/* Custom controls overlay */}
           {!showControls && canPlay && (
             <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black bg-opacity-30">
               <div className="flex items-center space-x-4">
@@ -325,8 +218,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             onError={handleMediaError}
             onLoad={handleMediaLoad}
           />
-          
-          {/* GIF indicator */}
+
           <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
             GIF
           </div>
