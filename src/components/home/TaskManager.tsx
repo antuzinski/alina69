@@ -14,7 +14,7 @@ interface Task {
   parent_task_id: string | null;
   completed_at: string | null;
   archived_at: string | null;
-  user_id: string;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
   subtasks?: Task[];
@@ -53,12 +53,6 @@ const TaskManager: React.FC = () => {
     queryKey: ['tasks'],
     queryFn: async () => {
       console.log('[TaskManager] Fetching tasks...');
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('[TaskManager] No active session');
-        throw new Error('No active session');
-      }
 
       const { data, error } = await supabase
         .from('tasks')
@@ -132,7 +126,6 @@ const TaskManager: React.FC = () => {
       position: number;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
         .from('tasks')
@@ -143,7 +136,7 @@ const TaskManager: React.FC = () => {
           column_name,
           parent_task_id,
           position,
-          user_id: user.id,
+          user_id: user?.id || null,
         })
         .select()
         .single();
@@ -238,7 +231,7 @@ const TaskManager: React.FC = () => {
       setNewTaskInputs({ ...newTaskInputs, [column]: '' });
     } catch (error) {
       console.error('[TaskManager] Error creating task:', error);
-      alert('Ошибка при создании задачи. Проверьте, что вы вошли в систему.');
+      alert('Ошибка при создании задачи.');
     }
   };
 
