@@ -218,35 +218,69 @@
       }
 
       log('Создание тестовой задачи...', 'info');
+      log('Проверка соединения перед вставкой...', 'info');
 
       try {
+        // Тест простого запроса
+        try {
+          const { count, error: countError } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true });
+
+          if (countError) {
+            log(`⚠️ Ошибка при подсчете: ${countError.message}`, 'error');
+          } else {
+            log(`✅ Доступ к таблице tasks OK, записей: ${count}`, 'success');
+          }
+        } catch (testErr) {
+          log(`⚠️ Не удалось проверить таблицу: ${testErr.message}`, 'error');
+        }
+
         let userId = null;
         try {
           const { data: { user } } = await supabase.auth.getUser();
           userId = user?.id;
+          log(`User ID: ${userId || 'null (анонимный)'}`, 'info');
         } catch (e) {
           log('⚠️ Auth недоступен, создаем без user_id', 'info');
         }
 
+        const taskData = {
+          title: `Тест ${new Date().toLocaleTimeString('ru-RU')}`,
+          description: 'Тестовая задача для проверки Realtime',
+          column_name: 'todo',
+          position: 0,
+          user_id: userId,
+        };
+
+        log(`Данные для вставки: ${JSON.stringify(taskData)}`, 'info');
+
         const { data, error } = await supabase
           .from('tasks')
-          .insert({
-            title: `Тест ${new Date().toLocaleTimeString('ru-RU')}`,
-            description: 'Тестовая задача для проверки Realtime',
-            column_name: 'todo',
-            position: 0,
-            user_id: userId,
-          })
+          .insert(taskData)
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          log(`❌ Ошибка INSERT: ${error.message}`, 'error');
+          log(`Код ошибки: ${error.code}`, 'error');
+          log(`Hint: ${error.hint || 'нет'}`, 'error');
+          log(`Details: ${error.details || 'нет'}`, 'error');
+          throw error;
+        }
 
         log(`✅ Задача создана: ${data.title}`, 'success');
         log(`ID: ${data.id}`, 'info');
+        log(`Ожидайте Realtime событие...`, 'info');
       } catch (error) {
-        log(`❌ Ошибка: ${error.message}`, 'error');
-        log(`Детали: ${JSON.stringify(error)}`, 'error');
+        log(`❌ Критическая ошибка: ${error.message}`, 'error');
+        log(`Тип: ${error.constructor.name}`, 'error');
+        log(`Stack: ${error.stack}`, 'error');
+
+        // Проверка сети
+        if (!navigator.onLine) {
+          log('⚠️ Устройство оффлайн!', 'error');
+        }
       }
     });
 
@@ -259,6 +293,23 @@
 
     async function init() {
       log('🚀 Инициализация...', 'info');
+      log(`User Agent: ${navigator.userAgent.substring(0, 100)}...`, 'info');
+      log(`Платформа: ${navigator.platform}`, 'info');
+      log(`Online: ${navigator.onLine}`, 'info');
+
+      // Проверка доступа к Supabase
+      try {
+        log('Проверка доступа к Supabase...', 'info');
+        const testResponse = await fetch(SUPABASE_URL + '/rest/v1/', {
+          method: 'HEAD',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY
+          }
+        });
+        log(`✅ REST API доступен: ${testResponse.status}`, 'success');
+      } catch (error) {
+        log(`❌ REST API недоступен: ${error.message}`, 'error');
+      }
 
       // Регистрация Service Worker
       if ('serviceWorker' in navigator) {
@@ -277,6 +328,8 @@
 
       // Инициализация Supabase
       try {
+        log(`Создание клиента для: ${SUPABASE_URL}`, 'info');
+
         supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           auth: {
             persistSession: true,
@@ -288,7 +341,13 @@
             params: {
               eventsPerSecond: 10,
             },
+            log_level: 'debug'
           },
+          global: {
+            headers: {
+              'X-Client-Info': 'debug-page'
+            }
+          }
         });
 
         log('✅ Supabase клиент создан', 'success');
@@ -315,9 +374,14 @@
 
         // Подписка на Realtime
         log('🔌 Подключение к Realtime...', 'info');
+        log(`WebSocket URL: wss://${SUPABASE_URL.replace('https://', '')}/realtime/v1/websocket`, 'info');
 
         channel = supabase
-          .channel('debug_tasks')
+          .channel('debug_tasks', {
+            config: {
+              broadcast: { self: true }
+            }
+          })
           .on(
             'postgres_changes',
             {
@@ -370,19 +434,22 @@
             }
           )
           .subscribe((status, err) => {
-            log(`Статус подписки: ${status}`, status === 'SUBSCRIBED' ? 'success' : 'info');
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            log(`[${timestamp}] Статус подписки: ${status}`, status === 'SUBSCRIBED' ? 'success' : 'info');
 
             if (err) {
-              log(`❌ Ошибка подписки: ${err.message}`, 'error');
+              log(`❌ Ошибка подписки: ${JSON.stringify(err)}`, 'error');
+              log(`Тип ошибки: ${err.constructor.name}`, 'error');
               updateStatus('realtime-status', 'Ошибка', false);
             } else if (status === 'SUBSCRIBED') {
-              log('✅ Подписка активна!', 'success');
+              log('✅ Подписка активна! Ожидание событий...', 'success');
               updateStatus('realtime-status', 'Подключено ✓', true);
             } else if (status === 'CHANNEL_ERROR') {
-              log('❌ Ошибка канала', 'error');
-              updateStatus('realtime-status', 'Ошибка', false);
+              log('❌ Ошибка канала - проверьте настройки Realtime в Supabase Dashboard', 'error');
+              log('Возможные причины: Realtime не включен, неправильные политики RLS, проблемы с сетью', 'error');
+              updateStatus('realtime-status', 'Ошибка канала', false);
             } else if (status === 'TIMED_OUT') {
-              log('❌ Тайм-аут подключения', 'error');
+              log('❌ Тайм-аут подключения - проверьте интернет-соединение', 'error');
               updateStatus('realtime-status', 'Тайм-аут', false);
             } else if (status === 'CLOSED') {
               log('⚠️ Соединение закрыто', 'error');
