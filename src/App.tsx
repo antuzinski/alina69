@@ -14,6 +14,7 @@ import FoldersPage from './pages/FoldersPage';
 import ManagePage from './pages/ManagePage';
 import EditItemPage from './pages/EditItemPage';
 import ChatPage from './pages/ChatPage';
+import HomePage from './pages/HomePage';
 import { supabase } from './lib/supabase';
 
 // Create a client
@@ -98,6 +99,7 @@ function App() {
             <Route path="admin/manage" element={<ManagePage />} />
             <Route path="admin/edit/:id" element={<EditItemPage />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="home" element={<HomePage />} />
           </Route>
         </Routes>
       </Router>
