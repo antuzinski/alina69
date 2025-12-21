@@ -1,12 +1,43 @@
 import React, { useState } from 'react';
 import { Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
+import FilteredCalendar from './FilteredCalendar';
 
 const CalendarPanel: React.FC = () => {
   const [iframeError, setIframeError] = useState(false);
   const calendarUrl = "https://calendar.google.com/calendar/u/0/r";
 
-  // Replace YOUR_CALENDAR_ID with your actual Google Calendar ID
+  // Option 1: Use filtered calendar with Google Calendar API (allows filtering specific events)
+  const useFilteredCalendar = false; // Set to true to enable event filtering
+  const googleCalendarApiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY || '';
+  const googleCalendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID || '';
+
+  // Option 2: Use embedded calendar (standard view, no filtering)
   const calendarId = "YOUR_CALENDAR_ID@gmail.com";
+
+  if (useFilteredCalendar) {
+    return (
+      <div className="h-full flex flex-col bg-gray-900">
+        <div className="p-4 border-b border-gray-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <CalendarIcon className="w-5 h-5 text-blue-500" />
+              <h2 className="text-lg font-semibold text-gray-100">Календарь</h2>
+            </div>
+            <a
+              href={calendarUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-blue-500 transition-colors"
+              title="Открыть в новой вкладке"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+        <FilteredCalendar apiKey={googleCalendarApiKey} calendarId={googleCalendarId} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
