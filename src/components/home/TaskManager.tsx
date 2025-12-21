@@ -168,32 +168,37 @@ const TaskManager: React.FC = () => {
     const parts = parseTaskInput(input);
     if (parts.length === 0) return;
 
-    const columnTasks = tasks.filter(t => t.column_name === column && !t.completed_at);
-    const maxPosition = columnTasks.length > 0
-      ? Math.max(...columnTasks.map(t => t.position))
-      : -1;
+    try {
+      const columnTasks = tasks.filter(t => t.column_name === column && !t.completed_at);
+      const maxPosition = columnTasks.length > 0
+        ? Math.max(...columnTasks.map(t => t.position))
+        : -1;
 
-    const mainTask = await createTaskMutation.mutateAsync({
-      title: parts[0],
-      description: '',
-      color: null,
-      column_name: column,
-      parent_task_id: null,
-      position: maxPosition + 1,
-    });
-
-    for (let i = 1; i < parts.length; i++) {
-      await createTaskMutation.mutateAsync({
-        title: parts[i],
+      const mainTask = await createTaskMutation.mutateAsync({
+        title: parts[0],
         description: '',
         color: null,
         column_name: column,
-        parent_task_id: mainTask.id,
-        position: i - 1,
+        parent_task_id: null,
+        position: maxPosition + 1,
       });
-    }
 
-    setNewTaskInputs({ ...newTaskInputs, [column]: '' });
+      for (let i = 1; i < parts.length; i++) {
+        await createTaskMutation.mutateAsync({
+          title: parts[i],
+          description: '',
+          color: null,
+          column_name: column,
+          parent_task_id: mainTask.id,
+          position: i - 1,
+        });
+      }
+
+      setNewTaskInputs({ ...newTaskInputs, [column]: '' });
+    } catch (error) {
+      console.error('[TaskManager] Error creating task:', error);
+      alert('Ошибка при создании задачи. Проверьте, что вы вошли в систему.');
+    }
   };
 
   const handleCompleteTask = (task: Task) => {
@@ -444,14 +449,7 @@ const TaskManager: React.FC = () => {
                 className="flex-1 min-w-[300px] lg:min-w-0 border-r border-gray-800 last:border-r-0 flex flex-col"
               >
                 <div className="p-4 border-b border-gray-800">
-                  <h2 className="text-lg font-semibold text-gray-100">{column}</h2>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4">
-                  {columnTasks.map((task) => renderTask(task))}
-                </div>
-
-                <div className="p-4 border-t border-gray-800">
+                  <h2 className="text-lg font-semibold text-gray-100 mb-3">{column}</h2>
                   <div className="flex space-x-2">
                     <input
                       type="text"
@@ -477,6 +475,10 @@ const TaskManager: React.FC = () => {
                   <div className="text-xs text-gray-500 mt-2">
                     Используйте ++ для вложенных задач
                   </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {columnTasks.map((task) => renderTask(task))}
                 </div>
               </div>
             );
