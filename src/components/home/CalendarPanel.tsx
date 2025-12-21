@@ -5,6 +5,9 @@ const CalendarPanel: React.FC = () => {
   const [iframeError, setIframeError] = useState(false);
   const calendarUrl = "https://calendar.google.com/calendar/u/0/r";
 
+  // Replace YOUR_CALENDAR_ID with your actual Google Calendar ID
+  const calendarId = "YOUR_CALENDAR_ID@gmail.com";
+
   return (
     <div className="h-full flex flex-col bg-gray-900">
       <div className="p-4 border-b border-gray-800">
@@ -29,7 +32,7 @@ const CalendarPanel: React.FC = () => {
         <div className="h-full bg-gray-800 rounded-lg overflow-hidden">
           {!iframeError ? (
             <iframe
-              src="https://calendar.google.com/calendar/embed?height=600&wkst=2&bgcolor=%23222222&ctz=Europe%2FMoscow&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0"
+              src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&height=600&wkst=2&bgcolor=%23222222&ctz=Europe%2FMoscow&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&mode=WEEK`}
               style={{ border: 0 }}
               width="100%"
               height="100%"
