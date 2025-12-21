@@ -165,14 +165,8 @@ const TaskManager: React.FC = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      if (!data.parent_task_id) {
-        showNotification('Новая задача добавлена', {
-          body: `${data.title} - ${data.column_name}`,
-          tag: 'task-added',
-        });
-      }
     },
   });
 
@@ -222,6 +216,11 @@ const TaskManager: React.FC = () => {
     const parts = parseTaskInput(input);
     if (parts.length === 0) return;
 
+    showNotification('Новая задача добавлена', {
+      body: `${parts[0]} - ${column}`,
+      tag: 'task-added',
+    });
+
     try {
       const columnTasks = tasks.filter(t => t.column_name === column);
       const activeColumnTasks = columnTasks.filter(t => !t.completed_at);
@@ -261,6 +260,11 @@ const TaskManager: React.FC = () => {
 
   const handleCompleteTask = (task: Task) => {
     setCompletingTaskId(task.id);
+
+    showNotification('Задача выполнена', {
+      body: `${task.title}`,
+      tag: 'task-completed',
+    });
 
     const timer = setTimeout(async () => {
       await updateTaskMutation.mutateAsync({
