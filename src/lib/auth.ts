@@ -61,26 +61,12 @@ export const login = async (password: string): Promise<AuthResponse> => {
 export const logout = async (): Promise<void> => {
   try {
     console.log('[AUTH] Logging out');
-    
-    // Clear all localStorage keys
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('sb-') || key.startsWith('site_'))) {
-        keysToRemove.push(key);
-      }
-    }
-    
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      console.log('[AUTH] Removed localStorage key:', key);
-    });
-    
-    // Sign out from Supabase
+
+    // Sign out from Supabase first (this will handle session cleanup)
     await supabase.auth.signOut();
-    
+
     console.log('[AUTH] Logout complete, forcing redirect');
-    
+
     // Force immediate redirect
     window.location.replace('/login');
   } catch (error) {
@@ -116,23 +102,21 @@ export const requireAuth = (): void => {
 // Initialize auth state listener
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('[AUTH] Auth state changed:', event, session?.user?.email);
-  
+
   if (event === 'SIGNED_OUT') {
-    console.log('[AUTH] User signed out, clearing storage and redirecting');
-    
-    // Clear localStorage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('sb-') || key.startsWith('site_'))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
+    console.log('[AUTH] User signed out, redirecting to login');
+
     // Force redirect if not already on login page
     if (window.location.pathname !== '/login') {
       window.location.replace('/login');
     }
+  }
+
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('[AUTH] Token refreshed successfully');
+  }
+
+  if (event === 'SIGNED_IN') {
+    console.log('[AUTH] User signed in:', session?.user?.email);
   }
 });

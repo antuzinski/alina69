@@ -48,16 +48,29 @@ const TaskManager: React.FC = () => {
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
 
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [], isLoading, error: queryError } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
+      console.log('[TaskManager] Fetching tasks...');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('[TaskManager] No active session');
+        throw new Error('No active session');
+      }
+
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .is('archived_at', null)
         .order('position', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[TaskManager] Query error:', error);
+        throw error;
+      }
+
+      console.log('[TaskManager] Fetched tasks:', data?.length || 0);
 
       const tasksMap = new Map<string, Task>();
       const rootTasks: Task[] = [];
@@ -414,6 +427,23 @@ const TaskManager: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center p-6">
+          <div className="text-red-400 mb-4">Ошибка загрузки задач</div>
+          <div className="text-gray-500 text-sm mb-4">{queryError.message}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+          >
+            Обновить страницу
+          </button>
+        </div>
       </div>
     );
   }

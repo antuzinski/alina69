@@ -3,35 +3,47 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Диагностика env переменных для дебага
-console.log('[SUPABASE] Environment check:', {
-  hasUrl: !!supabaseUrl,
+console.log('[SUPABASE] Initializing with:', {
+  url: supabaseUrl,
   hasKey: !!supabaseAnonKey,
-  url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'missing',
-  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 30)}...` : 'missing',
-  // Показываем полные значения для диагностики
-  fullUrl: supabaseUrl,
-  fullKey: supabaseAnonKey,
-  urlType: typeof supabaseUrl,
-  keyType: typeof supabaseAnonKey
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('[SUPABASE] Missing environment variables:', {
-    VITE_SUPABASE_URL: supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: supabaseAnonKey ? 'present' : 'missing'
-  });
-  throw new Error(`Missing Supabase environment variables. URL: ${!!supabaseUrl}, Key: ${!!supabaseAnonKey}`);
+  console.error('[SUPABASE] Missing environment variables');
+  throw new Error('Missing Supabase environment variables');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: 'sb-memorycatalog-auth',
+    flowType: 'pkce',
+  },
+  global: {
+    headers: {
+      'x-application-name': 'memorycatalog',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
   },
 });
 
-console.log('[SUPABASE] Client created successfully');
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('[SUPABASE] Auth state change:', {
+    event,
+    hasSession: !!session,
+    user: session?.user?.email,
+  });
+});
 
 // Types
 export type ItemType = 'text' | 'image' | 'quote';
