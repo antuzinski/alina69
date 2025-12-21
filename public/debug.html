@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Отладка Realtime</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 16px;
+      background: #000;
+      color: #0f0;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .status {
+      position: sticky;
+      top: 0;
+      background: #111;
+      padding: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #0f0;
+      border-radius: 4px;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      margin: 4px 0;
+      font-size: 13px;
+    }
+    .status-value {
+      font-weight: bold;
+      color: #ff0;
+    }
+    .status-value.good { color: #0f0; }
+    .status-value.bad { color: #f00; }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      background: #0f0;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:active {
+      opacity: 0.7;
+    }
+    button:disabled {
+      background: #666;
+      color: #999;
+    }
+    .log {
+      margin-top: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    .log-entry {
+      padding: 8px;
+      margin: 4px 0;
+      background: #111;
+      border-left: 3px solid #0f0;
+      word-wrap: break-word;
+      border-radius: 2px;
+    }
+    .log-entry.error {
+      border-left-color: #f00;
+      color: #f88;
+    }
+    .log-entry.success {
+      border-left-color: #0f0;
+      color: #0f0;
+    }
+    .log-entry.info {
+      border-left-color: #0ff;
+      color: #0ff;
+    }
+    .log-entry.event {
+      border-left-color: #ff0;
+      color: #ff0;
+      font-weight: bold;
+    }
+    .timestamp {
+      color: #666;
+      font-size: 10px;
+    }
+    .clear-btn {
+      background: #f00;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="status">
+    <div class="status-item">
+      <span>🔔 Оповещения:</span>
+      <span id="notif-status" class="status-value">Проверка...</span>
+    </div>
+    <div class="status-item">
+      <span>🔌 Realtime:</span>
+      <span id="realtime-status" class="status-value">Подключение...</span>
+    </div>
+    <div class="status-item">
+      <span>👤 Авторизация:</span>
+      <span id="auth-status" class="status-value">Проверка...</span>
+    </div>
+    <div class="status-item">
+      <span>📊 События:</span>
+      <span id="event-count" class="status-value">0</span>
+    </div>
+  </div>
+
+  <button id="request-permission">Запросить разрешение на оповещения</button>
+  <button id="test-notification" disabled>Тестовое оповещение</button>
+  <button id="create-task">Создать тестовую задачу</button>
+  <button id="clear-logs" class="clear-btn">Очистить логи</button>
+
+  <div class="log" id="log"></div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://hzylkemjmxjmxgqzilmn.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6eWxrZW1qbXhqbXhncXppbG1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzAwMzcwMTIsImV4cCI6MjA0NTYxMzAxMn0.vktvjBJQGbw2CtHMwdkWXYf1S6gKp-f2NRx8fF30M48';
+
+    let eventCount = 0;
+    let supabase;
+    let channel;
+
+    function updateStatus(id, text, isGood = null) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      if (isGood === true) el.className = 'status-value good';
+      else if (isGood === false) el.className = 'status-value bad';
+      else el.className = 'status-value';
+    }
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+
+      const timestamp = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+      entry.innerHTML = `<div class="timestamp">${timestamp}</div>${message}`;
+
+      logDiv.insertBefore(entry, logDiv.firstChild);
+
+      if (logDiv.children.length > 100) {
+        logDiv.removeChild(logDiv.lastChild);
+      }
+    }
+
+    function checkNotificationPermission() {
+      const permission = Notification.permission;
+      log(`Статус разрешения: ${permission}`, 'info');
+
+      if (permission === 'granted') {
+        updateStatus('notif-status', 'Разрешено ✓', true);
+        document.getElementById('test-notification').disabled = false;
+        return true;
+      } else if (permission === 'denied') {
+        updateStatus('notif-status', 'Запрещено ✗', false);
+        return false;
+      } else {
+        updateStatus('notif-status', 'Не запрошено', null);
+        return false;
+      }
+    }
+
+    document.getElementById('request-permission').addEventListener('click', async () => {
+      log('Запрос разрешения на оповещения...', 'info');
+
+      try {
+        const permission = await Notification.requestPermission();
+        log(`Результат запроса: ${permission}`, permission === 'granted' ? 'success' : 'error');
+        checkNotificationPermission();
+      } catch (error) {
+        log(`Ошибка: ${error.message}`, 'error');
+      }
+    });
+
+    document.getElementById('test-notification').addEventListener('click', () => {
+      log('Отправка тестового оповещения...', 'info');
+
+      try {
+        const notification = new Notification('Тест успешен! 🎉', {
+          body: 'Оповещения работают на этом устройстве',
+          icon: '/image.png',
+          tag: 'test'
+        });
+
+        notification.onclick = () => {
+          log('Клик по оповещению обработан', 'success');
+        };
+
+        log('Оповещение отправлено', 'success');
+      } catch (error) {
+        log(`Ошибка: ${error.message}`, 'error');
+      }
+    });
+
+    document.getElementById('create-task').addEventListener('click', async () => {
+      if (!supabase) {
+        log('Supabase не инициализирован', 'error');
+        return;
+      }
+
+      log('Создание тестовой задачи...', 'info');
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert({
+            title: `Тест ${new Date().toLocaleTimeString('ru-RU')}`,
+            description: 'Тестовая задача для проверки Realtime',
+            column_name: 'todo',
+            position: 0,
+            user_id: user?.id || null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        log(`✅ Задача создана: ${data.title}`, 'success');
+        log(`ID: ${data.id}`, 'info');
+      } catch (error) {
+        log(`❌ Ошибка: ${error.message}`, 'error');
+      }
+    });
+
+    document.getElementById('clear-logs').addEventListener('click', () => {
+      document.getElementById('log').innerHTML = '';
+      eventCount = 0;
+      updateStatus('event-count', '0');
+      log('Логи очищены', 'info');
+    });
+
+    async function init() {
+      log('🚀 Инициализация...', 'info');
+
+      // Проверка оповещений
+      checkNotificationPermission();
+
+      // Инициализация Supabase
+      try {
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            storage: window.localStorage,
+            storageKey: 'sb-memorycatalog-auth',
+          },
+          realtime: {
+            params: {
+              eventsPerSecond: 10,
+            },
+          },
+        });
+
+        log('✅ Supabase клиент создан', 'success');
+
+        // Проверка авторизации
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError) {
+          log(`⚠️ Ошибка auth: ${authError.message}`, 'error');
+          updateStatus('auth-status', 'Ошибка', false);
+        } else if (user) {
+          log(`✅ Вход выполнен: ${user.email}`, 'success');
+          updateStatus('auth-status', user.email, true);
+        } else {
+          log('⚠️ Не авторизован (анонимный доступ)', 'info');
+          updateStatus('auth-status', 'Анонимно', null);
+        }
+
+        // Подписка на Realtime
+        log('🔌 Подключение к Realtime...', 'info');
+
+        channel = supabase
+          .channel('debug_tasks')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'tasks',
+            },
+            (payload) => {
+              eventCount++;
+              updateStatus('event-count', eventCount);
+
+              log(`🔥 СОБЫТИЕ: ${payload.eventType}`, 'event');
+              log(`Таблица: ${payload.table}`, 'info');
+
+              if (payload.new) {
+                log(`Новые данные: ${JSON.stringify(payload.new, null, 2)}`, 'info');
+              }
+
+              if (payload.old) {
+                log(`Старые данные: ${JSON.stringify(payload.old, null, 2)}`, 'info');
+              }
+
+              // Показываем оповещение
+              if (Notification.permission === 'granted') {
+                let title = '';
+                let body = '';
+
+                if (payload.eventType === 'INSERT' && payload.new) {
+                  title = 'Новая задача';
+                  body = payload.new.title || 'Без названия';
+                } else if (payload.eventType === 'UPDATE' && payload.new) {
+                  if (payload.new.completed_at && (!payload.old || !payload.old.completed_at)) {
+                    title = 'Задача выполнена';
+                    body = payload.new.title || 'Без названия';
+                  } else {
+                    title = 'Задача обновлена';
+                    body = payload.new.title || 'Без названия';
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  title = 'Задача удалена';
+                  body = payload.old?.title || 'Без названия';
+                }
+
+                if (title) {
+                  new Notification(title, { body, icon: '/image.png' });
+                  log(`📬 Оповещение отправлено: ${title}`, 'success');
+                }
+              } else {
+                log('⚠️ Оповещения не разрешены', 'error');
+              }
+            }
+          )
+          .subscribe((status, err) => {
+            log(`Статус подписки: ${status}`, status === 'SUBSCRIBED' ? 'success' : 'info');
+
+            if (err) {
+              log(`❌ Ошибка подписки: ${err.message}`, 'error');
+              updateStatus('realtime-status', 'Ошибка', false);
+            } else if (status === 'SUBSCRIBED') {
+              log('✅ Подписка активна!', 'success');
+              updateStatus('realtime-status', 'Подключено ✓', true);
+            } else if (status === 'CHANNEL_ERROR') {
+              log('❌ Ошибка канала', 'error');
+              updateStatus('realtime-status', 'Ошибка', false);
+            } else if (status === 'TIMED_OUT') {
+              log('❌ Тайм-аут подключения', 'error');
+              updateStatus('realtime-status', 'Тайм-аут', false);
+            } else if (status === 'CLOSED') {
+              log('⚠️ Соединение закрыто', 'error');
+              updateStatus('realtime-status', 'Закрыто', false);
+            }
+          });
+
+      } catch (error) {
+        log(`❌ Критическая ошибка: ${error.message}`, 'error');
+        log(error.stack, 'error');
+      }
+    }
+
+    // Запуск
+    init();
+
+    // Логирование ошибок
+    window.addEventListener('error', (e) => {
+      log(`❌ JS Error: ${e.message}`, 'error');
+      log(`В файле: ${e.filename}:${e.lineno}`, 'error');
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      log(`❌ Unhandled Promise: ${e.reason}`, 'error');
+    });
+  </script>
+</body>
+</html>
