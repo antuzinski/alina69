@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Filter, X } from 'lucide-react';
+import { showNotification } from '../../lib/notifications';
 
 interface CalendarEvent {
   id: string;
@@ -24,6 +25,7 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
   const [filterText, setFilterText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previousEventIdsRef = useRef<Set<string>>(new Set());
 
   const fetchEvents = async () => {
     if (!apiKey || !calendarId) {
@@ -56,6 +58,20 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
         location: item.location,
       })) || [];
 
+      const newEventIds = new Set(formattedEvents.map(e => e.id));
+      const previousEventIds = previousEventIdsRef.current;
+
+      if (previousEventIds.size > 0) {
+        const newEvents = formattedEvents.filter(event => !previousEventIds.has(event.id));
+        newEvents.forEach(event => {
+          showNotification('Новое событие в календаре', {
+            body: `${event.summary}\n${formatDate(event.start)}`,
+            tag: `calendar-${event.id}`,
+          });
+        });
+      }
+
+      previousEventIdsRef.current = newEventIds;
       setEvents(formattedEvents);
       setFilteredEvents(formattedEvents);
     } catch (err) {

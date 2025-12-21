@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, GripVertical, Check, Trash2, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { showNotification } from '../../lib/notifications';
 
 interface Task {
   id: string;
@@ -150,8 +151,14 @@ const TaskManager: React.FC = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      if (!data.parent_task_id) {
+        showNotification('Новая задача добавлена', {
+          body: `${data.title} - ${data.column_name}`,
+          tag: 'task-added',
+        });
+      }
     },
   });
 
@@ -242,6 +249,10 @@ const TaskManager: React.FC = () => {
       await updateTaskMutation.mutateAsync({
         id: task.id,
         updates: { completed_at: new Date().toISOString() },
+      });
+      showNotification('Задача выполнена', {
+        body: task.title,
+        tag: 'task-completed',
       });
       setCompletingTaskId(null);
       setUndoTimer(null);

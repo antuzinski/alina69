@@ -15,6 +15,7 @@ import EditItemPage from './pages/EditItemPage';
 import ChatPage from './pages/ChatPage';
 import HomePage from './pages/HomePage';
 import { supabase } from './lib/supabase';
+import { requestNotificationPermission } from './lib/notifications';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -76,6 +77,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function App() {
+  React.useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
