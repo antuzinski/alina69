@@ -70,6 +70,49 @@ const TaskManager: React.FC = () => {
     }
   }, [colorPickerOpen]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('tasks_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+        },
+        (payload) => {
+          console.log('[TaskManager] Realtime update:', payload);
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newTask = payload.new as Task;
+            if (!newTask.parent_task_id) {
+              showNotification('Новая задача добавлена', {
+                body: `${newTask.title} - ${newTask.column_name}`,
+                tag: 'task-added-remote',
+              });
+            }
+          }
+
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedTask = payload.new as Task;
+            const oldTask = payload.old as Task;
+            if (updatedTask.completed_at && !oldTask.completed_at) {
+              showNotification('Задача выполнена', {
+                body: `${updatedTask.title}`,
+                tag: 'task-completed-remote',
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const { data: tasks = [], isLoading, error: queryError } = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
@@ -216,11 +259,6 @@ const TaskManager: React.FC = () => {
     const parts = parseTaskInput(input);
     if (parts.length === 0) return;
 
-    showNotification('Новая задача добавлена', {
-      body: `${parts[0]} - ${column}`,
-      tag: 'task-added',
-    });
-
     try {
       const columnTasks = tasks.filter(t => t.column_name === column);
       const activeColumnTasks = columnTasks.filter(t => !t.completed_at);
@@ -260,11 +298,6 @@ const TaskManager: React.FC = () => {
 
   const handleCompleteTask = (task: Task) => {
     setCompletingTaskId(task.id);
-
-    showNotification('Задача выполнена', {
-      body: `${task.title}`,
-      tag: 'task-completed',
-    });
 
     const timer = setTimeout(async () => {
       await updateTaskMutation.mutateAsync({
