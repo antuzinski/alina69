@@ -19,7 +19,7 @@ interface Task {
   subtasks?: Task[];
 }
 
-const COLUMNS: Array<'Общее' | 'Алина' | 'Юра'> = ['Общее', 'Алина', 'Юра'];
+const COLUMNS: Array<'Общее' | 'Алина' | 'Юра'> = ['Юра', 'Алина', 'Общее'];
 
 const COLORS = [
   { name: 'Красный', value: '#ef4444' },
@@ -72,12 +72,32 @@ const TaskManager: React.FC = () => {
 
       console.log('[TaskManager] Fetched tasks:', data?.length || 0);
 
+      const now = new Date();
+      const tasksToArchive: string[] = [];
+
       const tasksMap = new Map<string, Task>();
       const rootTasks: Task[] = [];
 
       (data || []).forEach((task: Task) => {
+        if (task.completed_at) {
+          const completedDate = new Date(task.completed_at);
+          const hoursSinceCompletion = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
+
+          if (hoursSinceCompletion >= 24) {
+            tasksToArchive.push(task.id);
+            return;
+          }
+        }
+
         tasksMap.set(task.id, { ...task, subtasks: [] });
       });
+
+      if (tasksToArchive.length > 0) {
+        await supabase
+          .from('tasks')
+          .update({ archived_at: now.toISOString() })
+          .in('id', tasksToArchive);
+      }
 
       tasksMap.forEach((task) => {
         if (task.parent_task_id) {
@@ -182,9 +202,10 @@ const TaskManager: React.FC = () => {
     if (parts.length === 0) return;
 
     try {
-      const columnTasks = tasks.filter(t => t.column_name === column && !t.completed_at);
-      const maxPosition = columnTasks.length > 0
-        ? Math.max(...columnTasks.map(t => t.position))
+      const columnTasks = tasks.filter(t => t.column_name === column);
+      const activeColumnTasks = columnTasks.filter(t => !t.completed_at);
+      const maxPosition = activeColumnTasks.length > 0
+        ? Math.max(...activeColumnTasks.map(t => t.position))
         : -1;
 
       const mainTask = await createTaskMutation.mutateAsync({
@@ -220,7 +241,7 @@ const TaskManager: React.FC = () => {
     const timer = setTimeout(async () => {
       await updateTaskMutation.mutateAsync({
         id: task.id,
-        updates: { archived_at: new Date().toISOString() },
+        updates: { completed_at: new Date().toISOString() },
       });
       setCompletingTaskId(null);
       setUndoTimer(null);
@@ -235,6 +256,13 @@ const TaskManager: React.FC = () => {
       setUndoTimer(null);
       setCompletingTaskId(null);
     }
+  };
+
+  const handleUncompleteTask = async (task: Task) => {
+    await updateTaskMutation.mutateAsync({
+      id: task.id,
+      updates: { completed_at: null },
+    });
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -278,10 +306,11 @@ const TaskManager: React.FC = () => {
 
     if (draggedTask.column_name !== targetColumn) {
       const targetColumnTasks = tasks.filter(
-        t => t.column_name === targetColumn && !t.completed_at
+        t => t.column_name === targetColumn
       );
-      const maxPosition = targetColumnTasks.length > 0
-        ? Math.max(...targetColumnTasks.map(t => t.position))
+      const activeTargetTasks = targetColumnTasks.filter(t => !t.completed_at);
+      const maxPosition = activeTargetTasks.length > 0
+        ? Math.max(...activeTargetTasks.map(t => t.position))
         : -1;
 
       await updateTaskMutation.mutateAsync({
@@ -313,15 +342,16 @@ const TaskManager: React.FC = () => {
     const isEditing = editingTask === task.id;
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
     const isCollapsed = collapsedTasks.has(task.id);
+    const isCompleted = !!task.completed_at;
 
     return (
       <div key={task.id} className={`${isSubtask ? 'ml-6' : ''}`}>
         <div
-          draggable={!isSubtask}
-          onDragStart={() => handleDragStart(task)}
+          draggable={!isSubtask && !isCompleted}
+          onDragStart={() => !isCompleted && handleDragStart(task)}
           className={`group bg-gray-800 rounded-lg p-3 mb-2 transition-all ${
             isCompleting ? 'opacity-50' : ''
-          } ${!isSubtask ? 'cursor-move' : ''}`}
+          } ${isCompleted ? 'opacity-60' : ''} ${!isSubtask && !isCompleted ? 'cursor-move' : ''}`}
           style={{ borderLeft: task.color ? `4px solid ${task.color}` : undefined }}
         >
           {isEditing ? (
@@ -385,30 +415,46 @@ const TaskManager: React.FC = () => {
                 </button>
               )}
               <div className="flex-1 min-w-0">
-                <div className="text-gray-100 text-sm font-medium">{task.title}</div>
+                <div className={`text-gray-100 text-sm font-medium ${isCompleted ? 'line-through' : ''}`}>
+                  {task.title}
+                </div>
                 {task.description && (
-                  <div className="text-gray-400 text-xs mt-1">{task.description}</div>
+                  <div className={`text-gray-400 text-xs mt-1 ${isCompleted ? 'line-through' : ''}`}>
+                    {task.description}
+                  </div>
                 )}
               </div>
               <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => handleEditTask(task)}
-                  className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleCompleteTask(task)}
-                  className="p-1 text-gray-400 hover:text-green-400 transition-colors"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="p-1 text-gray-400 hover:text-red-400 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {!isCompleted ? (
+                  <>
+                    <button
+                      onClick={() => handleEditTask(task)}
+                      className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleCompleteTask(task)}
+                      className="p-1 text-gray-400 hover:text-green-400 transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleUncompleteTask(task)}
+                    className="p-1 text-green-400 hover:text-green-300 transition-colors"
+                    title="Отменить выполнение"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -468,7 +514,7 @@ const TaskManager: React.FC = () => {
         <div className="flex flex-col lg:flex-row h-full lg:overflow-hidden">
           {COLUMNS.map((column) => {
             const columnTasks = tasks.filter(
-              (t) => t.column_name === column && !t.completed_at
+              (t) => t.column_name === column
             );
 
             return (
