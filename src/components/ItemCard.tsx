@@ -69,9 +69,6 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, className = "" }) => {
                 className="w-full h-48 object-cover rounded-lg mb-3"
                 loading="lazy"
                 onError={() => {
-                  console.log('[ITEM_CARD] Media failed to load, retrying...', item.image_url);
-                }}
-                onError={() => {
                   console.log('[ITEM_CARD] Media failed to load:', item.image_url);
                 }}
               />
