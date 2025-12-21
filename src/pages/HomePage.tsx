@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ClipboardList, Calendar as CalendarIcon, MessageCircle } from 'lucide-react';
 import TaskManager from '../components/home/TaskManager';
-import NotesPanel from '../components/home/NotesPanel';
+import ChatPanel from '../components/home/ChatPanel';
 import CalendarPanel from '../components/home/CalendarPanel';
 
-type MobileView = 'tasks' | 'calendar' | 'notes';
+type MobileView = 'tasks' | 'calendar' | 'chat';
 
 const HomePage: React.FC = () => {
   const [mobileView, setMobileView] = useState<MobileView>('tasks');
@@ -18,11 +18,11 @@ const HomePage: React.FC = () => {
           <TaskManager />
         </div>
 
-        {/* Right: Notes and Calendar */}
+        {/* Right: Chat and Calendar */}
         <div className="w-96 flex flex-col">
-          {/* Notes */}
+          {/* Chat */}
           <div className="flex-1 border-b border-gray-800 overflow-hidden">
-            <NotesPanel />
+            <ChatPanel />
           </div>
 
           {/* Calendar */}
@@ -38,7 +38,7 @@ const HomePage: React.FC = () => {
         <div className="flex-1 overflow-hidden">
           {mobileView === 'tasks' && <TaskManager />}
           {mobileView === 'calendar' && <CalendarPanel />}
-          {mobileView === 'notes' && <NotesPanel />}
+          {mobileView === 'chat' && <ChatPanel />}
         </div>
 
         {/* Bottom Navigation Tabs */}
@@ -66,9 +66,9 @@ const HomePage: React.FC = () => {
             Календарь
           </button>
           <button
-            onClick={() => setMobileView('notes')}
+            onClick={() => setMobileView('chat')}
             className={`flex-1 py-4 text-sm font-medium transition-colors ${
-              mobileView === 'notes'
+              mobileView === 'chat'
                 ? 'text-blue-500 border-t-2 border-blue-500'
                 : 'text-gray-400 hover:text-gray-300'
             }`}
