@@ -435,35 +435,35 @@ const TaskManager: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center space-x-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                 {!isCompleted ? (
                   <>
                     <button
                       onClick={() => handleEditTask(task)}
-                      className="p-1 text-gray-400 hover:text-blue-400 transition-colors"
+                      className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-all"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit2 className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleCompleteTask(task)}
-                      className="p-1 text-gray-400 hover:text-green-400 transition-colors"
+                      className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-400/10 rounded transition-all"
                     >
-                      <Check className="w-3.5 h-3.5" />
+                      <Check className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-all"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </>
                 ) : (
                   <button
                     onClick={() => handleUncompleteTask(task)}
-                    className="p-1 text-green-400 hover:text-green-300 transition-colors"
+                    className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded transition-all"
                     title="Отменить выполнение"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-5 h-5" />
                   </button>
                 )}
               </div>
