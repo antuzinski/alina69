@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, GripVertical, Check, Trash2, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, GripVertical, Check, Trash2, Edit2, ChevronDown, ChevronRight, Palette } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { showNotification } from '../../lib/notifications';
 
@@ -39,6 +39,11 @@ const TaskManager: React.FC = () => {
     'Алина': '',
     'Юра': '',
   });
+  const [newTaskColors, setNewTaskColors] = useState<Record<string, string | null>>({
+    'Общее': null,
+    'Алина': null,
+    'Юра': null,
+  });
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -49,7 +54,21 @@ const TaskManager: React.FC = () => {
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
   const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
   const [subtaskInput, setSubtaskInput] = useState('');
+  const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (colorPickerOpen) {
+        setColorPickerOpen(null);
+      }
+    };
+
+    if (colorPickerOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [colorPickerOpen]);
 
   const { data: tasks = [], isLoading, error: queryError } = useQuery({
     queryKey: ['tasks'],
@@ -210,10 +229,12 @@ const TaskManager: React.FC = () => {
         ? Math.max(...activeColumnTasks.map(t => t.position))
         : -1;
 
+      const selectedColor = newTaskColors[column];
+
       const mainTask = await createTaskMutation.mutateAsync({
         title: parts[0],
         description: '',
-        color: null,
+        color: selectedColor,
         column_name: column,
         parent_task_id: null,
         position: maxPosition + 1,
@@ -223,7 +244,7 @@ const TaskManager: React.FC = () => {
         await createTaskMutation.mutateAsync({
           title: parts[i],
           description: '',
-          color: null,
+          color: selectedColor,
           column_name: column,
           parent_task_id: mainTask.id,
           position: i - 1,
@@ -231,6 +252,7 @@ const TaskManager: React.FC = () => {
       }
 
       setNewTaskInputs({ ...newTaskInputs, [column]: '' });
+      setNewTaskColors({ ...newTaskColors, [column]: null });
     } catch (error) {
       console.error('[TaskManager] Error creating task:', error);
       alert('Ошибка при создании задачи.');
@@ -614,7 +636,59 @@ const TaskManager: React.FC = () => {
                       }}
                       placeholder="Новая задача..."
                       className="flex-1 bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      style={
+                        newTaskColors[column]
+                          ? { borderLeftColor: newTaskColors[column], borderLeftWidth: '4px' }
+                          : undefined
+                      }
                     />
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setColorPickerOpen(colorPickerOpen === column ? null : column);
+                        }}
+                        className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                        title="Выбрать цвет"
+                      >
+                        <Palette
+                          className="w-5 h-5"
+                          style={{ color: newTaskColors[column] || undefined }}
+                        />
+                      </button>
+                      {colorPickerOpen === column && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute top-full mt-1 right-0 bg-gray-800 border border-gray-700 rounded-lg p-2 shadow-xl z-50 min-w-[180px]"
+                        >
+                          <div className="grid grid-cols-4 gap-1.5 mb-2">
+                            {COLORS.map((color) => (
+                              <button
+                                key={color.value}
+                                onClick={() => {
+                                  setNewTaskColors({ ...newTaskColors, [column]: color.value });
+                                  setColorPickerOpen(null);
+                                }}
+                                className="w-8 h-8 rounded hover:ring-2 hover:ring-white/50 transition-all"
+                                style={{ backgroundColor: color.value }}
+                                title={color.name}
+                              />
+                            ))}
+                          </div>
+                          {newTaskColors[column] && (
+                            <button
+                              onClick={() => {
+                                setNewTaskColors({ ...newTaskColors, [column]: null });
+                                setColorPickerOpen(null);
+                              }}
+                              className="w-full text-xs text-gray-400 hover:text-gray-300 py-1 border-t border-gray-700 mt-1 pt-2"
+                            >
+                              Без цвета
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleCreateTask(column)}
                       className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
