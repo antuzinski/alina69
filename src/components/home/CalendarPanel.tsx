@@ -7,7 +7,7 @@ const CalendarPanel: React.FC = () => {
   const calendarUrl = "https://calendar.google.com/calendar/u/0/r";
 
   // Option 1: Use filtered calendar with Google Calendar API (allows filtering specific events)
-  const useFilteredCalendar = false; // Set to true to enable event filtering
+  const useFilteredCalendar = true; // Set to true to enable event filtering
   const googleCalendarApiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY || '';
   const googleCalendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID || '';
 
