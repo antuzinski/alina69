@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
-import { Search, FileText, Image, Home, Settings, LogOut, MessageCircle } from 'lucide-react';
+import { Search, FileText, Image, Home, LogOut, MessageCircle } from 'lucide-react';
 import { logout } from '../lib/auth';
 
 const Layout: React.FC = () => {
@@ -106,18 +106,6 @@ const Layout: React.FC = () => {
           >
             <MessageCircle className="w-5 h-5 mb-1" />
             <span>Chat</span>
-          </Link>
-          
-          <Link
-            to="/admin"
-            className={`flex flex-col items-center py-3 px-4 text-xs transition-colors ${
-              isActive('/admin')
-                ? 'text-emerald-500'
-                : 'text-gray-400 hover:text-gray-300'
-            }`}
-          >
-            <Settings className="w-5 h-5 mb-1" />
-            <span>Admin</span>
           </Link>
         </div>
       </nav>
