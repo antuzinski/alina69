@@ -464,8 +464,8 @@ const TaskManager: React.FC = () => {
       )}
 
       {/* Columns */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex h-full min-w-max lg:min-w-0">
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col lg:flex-row h-full lg:overflow-hidden">
           {COLUMNS.map((column) => {
             const columnTasks = tasks.filter(
               (t) => t.column_name === column && !t.completed_at
@@ -476,7 +476,7 @@ const TaskManager: React.FC = () => {
                 key={column}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(column)}
-                className="flex-1 min-w-[300px] lg:min-w-0 border-r border-gray-800 last:border-r-0 flex flex-col"
+                className="flex-1 border-b lg:border-b-0 lg:border-r border-gray-800 last:border-b-0 lg:last:border-r-0 flex flex-col min-h-[400px] lg:min-h-0"
               >
                 <div className="p-4 border-b border-gray-800">
                   <h2 className="text-lg font-semibold text-gray-100 mb-3">{column}</h2>

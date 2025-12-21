@@ -86,8 +86,8 @@ function App() {
               <Layout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/home" replace />} />
-            <Route path="home" element={<HomePage />} />
+            <Route index element={<HomePage />} />
+            <Route path="home" element={<Navigate to="/" replace />} />
             <Route path="texts" element={<TextsPage />} />
             <Route path="images" element={<ImagesPage />} />
             <Route path="admin" element={<AdminPage />} />
