@@ -71,6 +71,8 @@ const TaskManager: React.FC = () => {
   }, [colorPickerOpen]);
 
   useEffect(() => {
+    console.log('[TaskManager] Setting up Realtime subscription...');
+
     const channel = supabase
       .channel('tasks_changes')
       .on(
@@ -81,12 +83,14 @@ const TaskManager: React.FC = () => {
           table: 'tasks',
         },
         (payload) => {
-          console.log('[TaskManager] Realtime update:', payload);
+          console.log('[TaskManager] 🔥 Realtime event received:', payload.eventType, payload);
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
           if (payload.eventType === 'INSERT' && payload.new) {
             const newTask = payload.new as Task;
+            console.log('[TaskManager] New task detected:', newTask);
             if (!newTask.parent_task_id) {
+              console.log('[TaskManager] Showing notification for new task');
               showNotification('Новая задача добавлена', {
                 body: `${newTask.title} - ${newTask.column_name}`,
                 tag: 'task-added-remote',
@@ -97,7 +101,9 @@ const TaskManager: React.FC = () => {
           if (payload.eventType === 'UPDATE' && payload.new) {
             const updatedTask = payload.new as Task;
             const oldTask = payload.old as Task;
+            console.log('[TaskManager] Task updated. Old:', oldTask, 'New:', updatedTask);
             if (updatedTask.completed_at && !oldTask.completed_at) {
+              console.log('[TaskManager] Showing notification for completed task');
               showNotification('Задача выполнена', {
                 body: `${updatedTask.title}`,
                 tag: 'task-completed-remote',
@@ -106,9 +112,18 @@ const TaskManager: React.FC = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log('[TaskManager] Subscription status:', status);
+        if (err) {
+          console.error('[TaskManager] Subscription error:', err);
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('[TaskManager] ✅ Successfully subscribed to Realtime');
+        }
+      });
 
     return () => {
+      console.log('[TaskManager] Cleaning up Realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
