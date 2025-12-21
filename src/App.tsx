@@ -5,7 +5,6 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import TextsPage from './pages/TextsPage';
 import ImagesPage from './pages/ImagesPage';
-import GamePage from './pages/GamePage';
 import AdminPage from './pages/AdminPage';
 import ItemDetailPage from './pages/ItemDetailPage';
 import SearchPage from './pages/SearchPage';
@@ -87,10 +86,10 @@ function App() {
               <Layout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/texts" replace />} />
+            <Route index element={<Navigate to="/home" replace />} />
+            <Route path="home" element={<HomePage />} />
             <Route path="texts" element={<TextsPage />} />
             <Route path="images" element={<ImagesPage />} />
-            <Route path="game" element={<GamePage />} />
             <Route path="admin" element={<AdminPage />} />
             <Route path="item/:id" element={<ItemDetailPage />} />
             <Route path="search" element={<SearchPage />} />
@@ -99,7 +98,6 @@ function App() {
             <Route path="admin/manage" element={<ManagePage />} />
             <Route path="admin/edit/:id" element={<EditItemPage />} />
             <Route path="chat" element={<ChatPage />} />
-            <Route path="home" element={<HomePage />} />
           </Route>
         </Routes>
       </Router>

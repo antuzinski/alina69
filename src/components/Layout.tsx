@@ -1,13 +1,13 @@
 import React from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
-import { Search, FileText, Image, Gamepad2, Settings, LogOut, MessageCircle } from 'lucide-react';
+import { Search, FileText, Image, Home, Settings, LogOut, MessageCircle } from 'lucide-react';
 import { logout } from '../lib/auth';
 
 const Layout: React.FC = () => {
   const location = useLocation();
 
   const isActive = (path: string) => {
-    if (path === '/texts' && location.pathname === '/') return true;
+    if (path === '/home' && location.pathname === '/') return true;
     return location.pathname.startsWith(path);
   };
 
@@ -63,7 +63,7 @@ const Layout: React.FC = () => {
           <Link
             to="/texts"
             className={`flex flex-col items-center py-3 px-4 text-xs transition-colors ${
-              isActive('/texts') || location.pathname === '/'
+              isActive('/texts')
                 ? 'text-emerald-500'
                 : 'text-gray-400 hover:text-gray-300'
             }`}
@@ -85,15 +85,15 @@ const Layout: React.FC = () => {
           </Link>
           
           <Link
-            to="/game"
+            to="/home"
             className={`flex flex-col items-center py-3 px-4 text-xs transition-colors ${
-              isActive('/game')
+              isActive('/home')
                 ? 'text-emerald-500'
                 : 'text-gray-400 hover:text-gray-300'
             }`}
           >
-            <Gamepad2 className="w-5 h-5 mb-1" />
-            <span>Game</span>
+            <Home className="w-5 h-5 mb-1" />
+            <span>Home</span>
           </Link>
           
           <Link

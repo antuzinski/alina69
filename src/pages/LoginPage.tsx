@@ -15,10 +15,10 @@ const LoginPage: React.FC = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/texts');
+        navigate('/home');
       }
     };
-    
+
     checkAuth();
   }, [navigate]);
 
@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        navigate('/texts');
+        navigate('/home');
       }
     });
 
@@ -49,10 +49,10 @@ const LoginPage: React.FC = () => {
     console.log('Submitting login form');
     const result = await login(password);
     console.log('Login result:', result);
-    
+
     if (result.success) {
-      console.log('Login successful, navigating to /texts');
-      navigate('/texts');
+      console.log('Login successful, navigating to /home');
+      navigate('/home');
     } else {
       setError(result.error || 'Ошибка входа');
     }
