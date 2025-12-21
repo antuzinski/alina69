@@ -47,6 +47,8 @@ const TaskManager: React.FC = () => {
   const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
+  const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
+  const [subtaskInput, setSubtaskInput] = useState('');
   const queryClient = useQueryClient();
 
   const { data: tasks = [], isLoading, error: queryError } = useQuery({
@@ -276,6 +278,8 @@ const TaskManager: React.FC = () => {
     setEditTitle(task.title);
     setEditDescription(task.description);
     setEditColor(task.color);
+    setAddingSubtaskTo(null);
+    setSubtaskInput('');
   };
 
   const handleSaveEdit = async () => {
@@ -291,6 +295,28 @@ const TaskManager: React.FC = () => {
     });
 
     setEditingTask(null);
+  };
+
+  const handleAddSubtask = async (parentTask: Task) => {
+    if (!subtaskInput.trim()) return;
+
+    const subtaskCount = parentTask.subtasks?.length || 0;
+
+    await createTaskMutation.mutateAsync({
+      title: subtaskInput,
+      description: '',
+      color: null,
+      column_name: parentTask.column_name,
+      parent_task_id: parentTask.id,
+      position: subtaskCount,
+    });
+
+    setSubtaskInput('');
+    setAddingSubtaskTo(null);
+
+    const newCollapsed = new Set(collapsedTasks);
+    newCollapsed.delete(parentTask.id);
+    setCollapsedTasks(newCollapsed);
   };
 
   const handleDragStart = (task: Task) => {
@@ -428,6 +454,16 @@ const TaskManager: React.FC = () => {
                 {!isCompleted ? (
                   <>
                     <button
+                      onClick={() => {
+                        setAddingSubtaskTo(task.id);
+                        setEditingTask(null);
+                      }}
+                      className="p-2 text-gray-400 hover:text-purple-400 hover:bg-purple-400/10 rounded transition-all"
+                      title="Добавить подзадачу"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleEditTask(task)}
                       className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-all"
                     >
@@ -463,6 +499,44 @@ const TaskManager: React.FC = () => {
         {hasSubtasks && !isCollapsed && (
           <div>
             {task.subtasks!.map((subtask) => renderTask(subtask, true))}
+          </div>
+        )}
+
+        {addingSubtaskTo === task.id && (
+          <div className="ml-6 mt-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={subtaskInput}
+                onChange={(e) => setSubtaskInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddSubtask(task);
+                  } else if (e.key === 'Escape') {
+                    setAddingSubtaskTo(null);
+                    setSubtaskInput('');
+                  }
+                }}
+                placeholder="Название подзадачи..."
+                className="flex-1 bg-gray-700 text-gray-100 px-3 py-2 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                autoFocus
+              />
+              <button
+                onClick={() => handleAddSubtask(task)}
+                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors"
+              >
+                Добавить
+              </button>
+              <button
+                onClick={() => {
+                  setAddingSubtaskTo(null);
+                  setSubtaskInput('');
+                }}
+                className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm transition-colors"
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         )}
       </div>
