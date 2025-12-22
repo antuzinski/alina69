@@ -25,6 +25,8 @@ interface GoogleCalendarEvent {
   summary: string;
   start: string;
   end: string;
+  start_time?: string | null;
+  end_time?: string | null;
   description?: string;
   color?: string;
   isGoogleEvent?: boolean;
@@ -49,6 +51,8 @@ const CalendarPanel: React.FC = () => {
     title: '',
     description: '',
     color: '#3b82f6',
+    start_time: '',
+    end_time: '',
   });
 
   useEffect(() => {
@@ -85,6 +89,13 @@ const CalendarPanel: React.FC = () => {
         const startStr = (item.start?.dateTime || item.start?.date || '').split('T')[0];
         let endStr = (item.end?.dateTime || item.end?.date || '').split('T')[0];
 
+        const startTime = item.start?.dateTime
+          ? item.start.dateTime.split('T')[1]?.slice(0, 5)
+          : null;
+        const endTime = item.end?.dateTime
+          ? item.end.dateTime.split('T')[1]?.slice(0, 5)
+          : null;
+
         if (endStr && !item.end?.dateTime) {
           const endDate = new Date(endStr);
           endDate.setDate(endDate.getDate() - 1);
@@ -96,6 +107,8 @@ const CalendarPanel: React.FC = () => {
           summary: item.summary || 'No title',
           start: startStr,
           end: endStr || startStr,
+          start_time: startTime,
+          end_time: endTime,
           description: item.description,
           color: '#6366f1',
           isGoogleEvent: true,
@@ -115,6 +128,8 @@ const CalendarPanel: React.FC = () => {
       start_date: e.start,
       end_date: e.end,
       title: e.summary,
+      start_time: e.start_time,
+      end_time: e.end_time,
       created_at: '',
       updated_at: '',
     }))
@@ -176,6 +191,8 @@ const CalendarPanel: React.FC = () => {
       title: '',
       description: '',
       color: '#3b82f6',
+      start_time: '',
+      end_time: '',
     });
     setEditingEvent(null);
     setShowEventModal(true);
@@ -204,6 +221,8 @@ const CalendarPanel: React.FC = () => {
       title: event.title,
       description: event.description,
       color: event.color,
+      start_time: event.start_time || '',
+      end_time: event.end_time || '',
     });
     setShowEventModal(true);
   };
@@ -229,6 +248,8 @@ const CalendarPanel: React.FC = () => {
       description: formData.description,
       start_date: startDate,
       end_date: endDate,
+      start_time: formData.start_time || null,
+      end_time: formData.end_time || null,
       color: formData.color,
     };
 
@@ -375,14 +396,19 @@ const CalendarPanel: React.FC = () => {
                         {dayEvents.slice(0, 3).map(event => (
                           <div
                             key={event.id}
-                            className={`text-xs px-2 py-1 rounded text-white truncate group relative ${
+                            className={`text-xs px-2 py-1 rounded text-white group relative flex items-center justify-between ${
                               (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-pointer'
                             }`}
                             style={{ backgroundColor: event.color }}
                             onClick={(e) => handleEditEvent(event, e)}
                             title={(event as any).isGoogleEvent ? 'Google Calendar Event (read-only)' : event.title}
                           >
-                            {event.title}
+                            <span className="truncate">{event.title}</span>
+                            {event.start_time && (
+                              <span className="ml-2 text-[10px] opacity-75 shrink-0">
+                                {event.start_time.slice(0, 5)}
+                              </span>
+                            )}
                           </div>
                         ))}
                         {dayEvents.length > 3 && (
@@ -425,12 +451,18 @@ const CalendarPanel: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-3 h-3 rounded-full shrink-0"
                             style={{ backgroundColor: event.color }}
                           />
-                          <h4 className="font-medium text-gray-100">
-                            {event.title}
-                            {isGoogle && <span className="text-xs text-gray-500 ml-2">(Google Calendar)</span>}
+                          <h4 className="font-medium text-gray-100 flex items-center gap-2 flex-1">
+                            <span className="flex-1">{event.title}</span>
+                            {event.start_time && (
+                              <span className="text-sm text-gray-400 font-normal shrink-0">
+                                {event.start_time.slice(0, 5)}
+                                {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
+                              </span>
+                            )}
+                            {isGoogle && <span className="text-xs text-gray-500 shrink-0">(Google Calendar)</span>}
                           </h4>
                         </div>
                         <p className="text-sm text-gray-400 mb-2">
@@ -532,6 +564,31 @@ const CalendarPanel: React.FC = () => {
                   rows={3}
                   placeholder="Add details"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Start Time (optional)
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.start_time}
+                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    End Time (optional)
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.end_time}
+                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
 
               <div>
