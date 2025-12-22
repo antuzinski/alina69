@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Trash2, ExternalLink } from 'lucide-react';
 import { api, CalendarEvent } from '../../lib/api';
+
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 const COLORS = [
   { label: 'Blue', value: '#3b82f6' },
@@ -13,32 +20,105 @@ const COLORS = [
   { label: 'Yellow', value: '#eab308' },
 ];
 
+interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+  description?: string;
+  color?: string;
+  isGoogleEvent?: boolean;
+}
+
 const CalendarPanel: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [localEvents, setLocalEvents] = useState<CalendarEvent[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartDate, setDragStartDate] = useState<Date | null>(null);
+  const [dragEndDate, setDragEndDate] = useState<Date | null>(null);
+
+  const googleCalendarApiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY || '';
+  const googleCalendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID || '';
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     color: '#3b82f6',
-    isMultiDay: false,
-    endDate: null as Date | null,
   });
 
   useEffect(() => {
-    loadEvents();
+    loadLocalEvents();
+    if (googleCalendarApiKey && googleCalendarId) {
+      loadGoogleEvents();
+    }
   }, [currentDate]);
 
-  const loadEvents = async () => {
+  const loadLocalEvents = async () => {
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     const eventsList = await api.getCalendarEvents(startOfMonth, endOfMonth);
-    setEvents(eventsList);
+    setLocalEvents(eventsList);
   };
+
+  const loadGoogleEvents = async () => {
+    if (!googleCalendarApiKey || !googleCalendarId) return;
+
+    try {
+      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+      const timeMin = startOfMonth.toISOString();
+      const timeMax = endOfMonth.toISOString();
+
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(googleCalendarId)}/events?key=${googleCalendarApiKey}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`;
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch Google Calendar events');
+
+      const data = await response.json();
+      const formattedEvents: GoogleCalendarEvent[] = data.items?.map((item: any) => {
+        const startStr = (item.start?.dateTime || item.start?.date || '').split('T')[0];
+        let endStr = (item.end?.dateTime || item.end?.date || '').split('T')[0];
+
+        if (endStr && !item.end?.dateTime) {
+          const endDate = new Date(endStr);
+          endDate.setDate(endDate.getDate() - 1);
+          endStr = formatDateLocal(endDate);
+        }
+
+        return {
+          id: `google-${item.id}`,
+          summary: item.summary || 'No title',
+          start: startStr,
+          end: endStr || startStr,
+          description: item.description,
+          color: '#6366f1',
+          isGoogleEvent: true,
+        };
+      }) || [];
+
+      setGoogleEvents(formattedEvents);
+    } catch (error) {
+      console.error('Error loading Google Calendar events:', error);
+    }
+  };
+
+  const allEvents = [
+    ...localEvents,
+    ...googleEvents.map(e => ({
+      ...e,
+      start_date: e.start,
+      end_date: e.end,
+      title: e.summary,
+      created_at: '',
+      updated_at: '',
+    }))
+  ];
 
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
@@ -63,40 +143,67 @@ const CalendarPanel: React.FC = () => {
 
   const getEventsForDate = (date: Date | null) => {
     if (!date) return [];
-    const dateStr = date.toISOString().split('T')[0];
-    return events.filter(event => {
+    const dateStr = formatDateLocal(date);
+    return allEvents.filter(event => {
       const startDate = event.start_date;
       const endDate = event.end_date;
       return dateStr >= startDate && dateStr <= endDate;
     });
   };
 
-  const handleDateClick = (date: Date | null) => {
+  const handleMouseDown = (date: Date | null) => {
     if (!date) return;
-    setSelectedDate(date);
+    setIsDragging(true);
+    setDragStartDate(date);
+    setDragEndDate(date);
+  };
+
+  const handleMouseEnter = (date: Date | null) => {
+    if (!isDragging || !date) return;
+    setDragEndDate(date);
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging || !dragStartDate) return;
+
+    setIsDragging(false);
+
+    const start = dragEndDate && dragEndDate < dragStartDate ? dragEndDate : dragStartDate;
+    const end = dragEndDate && dragEndDate > dragStartDate ? dragEndDate : dragStartDate;
+
+    setSelectedDate(start);
     setFormData({
       title: '',
       description: '',
       color: '#3b82f6',
-      isMultiDay: false,
-      endDate: null,
     });
     setEditingEvent(null);
     setShowEventModal(true);
   };
 
-  const handleEditEvent = (event: CalendarEvent, e: React.MouseEvent) => {
+  const isDateInDragRange = (date: Date | null) => {
+    if (!isDragging || !dragStartDate || !date) return false;
+
+    const start = dragEndDate && dragEndDate < dragStartDate ? dragEndDate : dragStartDate;
+    const end = dragEndDate && dragEndDate > dragStartDate ? dragEndDate : dragStartDate;
+
+    return date >= start && date <= end;
+  };
+
+  const handleEditEvent = (event: any, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (event.isGoogleEvent) return;
+
     setEditingEvent(event);
     const startDate = new Date(event.start_date);
     const endDate = new Date(event.end_date);
     setSelectedDate(startDate);
+    setDragEndDate(endDate);
     setFormData({
       title: event.title,
       description: event.description,
       color: event.color,
-      isMultiDay: event.start_date !== event.end_date,
-      endDate: event.start_date !== event.end_date ? endDate : null,
     });
     setShowEventModal(true);
   };
@@ -105,16 +212,16 @@ const CalendarPanel: React.FC = () => {
     e.stopPropagation();
     if (confirm('Delete this event?')) {
       await api.deleteCalendarEvent(eventId);
-      loadEvents();
+      loadLocalEvents();
     }
   };
 
   const handleSaveEvent = async () => {
     if (!selectedDate || !formData.title.trim()) return;
 
-    const startDate = selectedDate.toISOString().split('T')[0];
-    const endDate = formData.isMultiDay && formData.endDate
-      ? formData.endDate.toISOString().split('T')[0]
+    const startDate = formatDateLocal(selectedDate);
+    const endDate = dragEndDate && dragEndDate >= selectedDate
+      ? formatDateLocal(dragEndDate)
       : startDate;
 
     const eventData = {
@@ -132,7 +239,9 @@ const CalendarPanel: React.FC = () => {
         await api.createCalendarEvent(eventData);
       }
       setShowEventModal(false);
-      loadEvents();
+      setDragStartDate(null);
+      setDragEndDate(null);
+      loadLocalEvents();
     } catch (error) {
       console.error('Error saving event:', error);
     }
@@ -150,26 +259,26 @@ const CalendarPanel: React.FC = () => {
   const days = getDaysInMonth();
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  const upcomingEvents = events
+  const upcomingEvents = allEvents
     .filter(event => new Date(event.start_date) >= new Date(new Date().setHours(0, 0, 0, 0)))
     .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
     .slice(0, 10);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="p-6 border-b border-gray-200">
+    <div className="h-full flex flex-col bg-gray-900">
+      <div className="p-6 border-b border-gray-800">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <CalendarIcon className="w-6 h-6 text-gray-700" />
-            <h2 className="text-2xl font-semibold text-gray-900">Calendar</h2>
+            <CalendarIcon className="w-6 h-6 text-blue-400" />
+            <h2 className="text-2xl font-semibold text-gray-100">Calendar</h2>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setViewMode('calendar')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'calendar'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
               Calendar
@@ -178,27 +287,38 @@ const CalendarPanel: React.FC = () => {
               onClick={() => setViewMode('list')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'list'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
               List
             </button>
+            {googleCalendarApiKey && googleCalendarId && (
+              <a
+                href="https://calendar.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                title="Open Google Calendar"
+              >
+                <ExternalLink className="w-5 h-5" />
+              </a>
+            )}
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-900">{monthName}</h3>
+          <h3 className="text-xl font-semibold text-gray-100">{monthName}</h3>
           <div className="flex items-center space-x-2">
             <button
               onClick={prevMonth}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-300"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={nextMonth}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors text-gray-300"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -219,26 +339,34 @@ const CalendarPanel: React.FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div
+            className="grid grid-cols-7 gap-2"
+            onMouseUp={handleMouseUp}
+            onMouseLeave={() => setIsDragging(false)}
+          >
             {days.map((date, index) => {
               const dayEvents = getEventsForDate(date);
               const isToday = date && date.toDateString() === new Date().toDateString();
+              const inDragRange = isDateInDragRange(date);
 
               return (
                 <div
                   key={index}
-                  onClick={() => handleDateClick(date)}
-                  className={`min-h-[100px] p-2 border rounded-lg transition-all cursor-pointer ${
+                  onMouseDown={() => handleMouseDown(date)}
+                  onMouseEnter={() => handleMouseEnter(date)}
+                  className={`min-h-[100px] p-2 border rounded-lg transition-all select-none ${
                     date
-                      ? 'bg-white hover:bg-gray-50 border-gray-200 hover:shadow-md'
-                      : 'bg-gray-50 border-gray-100'
+                      ? `bg-gray-800 hover:bg-gray-750 border-gray-700 cursor-pointer ${
+                          inDragRange ? 'bg-blue-900 border-blue-600' : ''
+                        }`
+                      : 'bg-gray-900 border-gray-800'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                 >
                   {date && (
                     <>
                       <div
                         className={`text-sm font-medium mb-1 ${
-                          isToday ? 'text-blue-600' : 'text-gray-700'
+                          isToday ? 'text-blue-400' : 'text-gray-300'
                         }`}
                       >
                         {date.getDate()}
@@ -247,9 +375,12 @@ const CalendarPanel: React.FC = () => {
                         {dayEvents.slice(0, 3).map(event => (
                           <div
                             key={event.id}
-                            className="text-xs px-2 py-1 rounded text-white truncate group relative"
+                            className={`text-xs px-2 py-1 rounded text-white truncate group relative ${
+                              (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-pointer'
+                            }`}
                             style={{ backgroundColor: event.color }}
                             onClick={(e) => handleEditEvent(event, e)}
+                            title={(event as any).isGoogleEvent ? 'Google Calendar Event (read-only)' : event.title}
                           >
                             {event.title}
                           </div>
@@ -280,12 +411,15 @@ const CalendarPanel: React.FC = () => {
                 const startDate = new Date(event.start_date);
                 const endDate = new Date(event.end_date);
                 const isMultiDay = event.start_date !== event.end_date;
+                const isGoogle = (event as any).isGoogleEvent;
 
                 return (
                   <div
                     key={event.id}
-                    className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all cursor-pointer"
-                    onClick={(e) => handleEditEvent(event, e)}
+                    className={`p-4 border border-gray-700 bg-gray-800 rounded-lg hover:border-gray-600 transition-all ${
+                      !isGoogle ? 'cursor-pointer' : ''
+                    }`}
+                    onClick={(e) => !isGoogle && handleEditEvent(event, e)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -294,9 +428,12 @@ const CalendarPanel: React.FC = () => {
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: event.color }}
                           />
-                          <h4 className="font-medium text-gray-900">{event.title}</h4>
+                          <h4 className="font-medium text-gray-100">
+                            {event.title}
+                            {isGoogle && <span className="text-xs text-gray-500 ml-2">(Google Calendar)</span>}
+                          </h4>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-sm text-gray-400 mb-2">
                           {startDate.toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -311,12 +448,14 @@ const CalendarPanel: React.FC = () => {
                           <p className="text-sm text-gray-500">{event.description}</p>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => handleDeleteEvent(event.id, e)}
-                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!isGoogle && (
+                        <button
+                          onClick={(e) => handleDeleteEvent(event.id, e)}
+                          className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -327,15 +466,19 @@ const CalendarPanel: React.FC = () => {
       )}
 
       {showEventModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto border border-gray-700">
+            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-100">
                 {editingEvent ? 'Edit Event' : 'New Event'}
               </h3>
               <button
-                onClick={() => setShowEventModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                onClick={() => {
+                  setShowEventModal(false);
+                  setDragStartDate(null);
+                  setDragEndDate(null);
+                }}
+                className="p-2 hover:bg-gray-700 rounded-full transition-colors text-gray-400"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -343,79 +486,56 @@ const CalendarPanel: React.FC = () => {
 
             <div className="p-6 space-y-4">
               {selectedDate && (
-                <div className="text-sm text-gray-600 mb-4">
+                <div className="text-sm text-gray-400 mb-4">
                   {selectedDate.toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                   })}
+                  {dragEndDate && dragEndDate > selectedDate && (
+                    <span>
+                      {' - '}
+                      {dragEndDate.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  )}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Event Title
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter event title"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Description (optional)
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows={3}
                   placeholder="Add details"
                 />
               </div>
 
               <div>
-                <label className="flex items-center space-x-2 mb-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.isMultiDay}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        isMultiDay: e.target.checked,
-                        endDate: e.target.checked ? formData.endDate : null,
-                      })
-                    }
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium text-gray-700">Multi-day event</span>
-                </label>
-
-                {formData.isMultiDay && (
-                  <input
-                    type="date"
-                    value={
-                      formData.endDate
-                        ? formData.endDate.toISOString().split('T')[0]
-                        : selectedDate?.toISOString().split('T')[0]
-                    }
-                    onChange={(e) =>
-                      setFormData({ ...formData, endDate: new Date(e.target.value) })
-                    }
-                    min={selectedDate?.toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Color
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -425,7 +545,7 @@ const CalendarPanel: React.FC = () => {
                       onClick={() => setFormData({ ...formData, color: color.value })}
                       className={`h-10 rounded-lg transition-all ${
                         formData.color === color.value
-                          ? 'ring-2 ring-offset-2 ring-gray-900 scale-105'
+                          ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-gray-300 scale-105'
                           : 'hover:scale-105'
                       }`}
                       style={{ backgroundColor: color.value }}
@@ -441,22 +561,28 @@ const CalendarPanel: React.FC = () => {
                     onClick={(e) => {
                       handleDeleteEvent(editingEvent.id, e);
                       setShowEventModal(false);
+                      setDragStartDate(null);
+                      setDragEndDate(null);
                     }}
-                    className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
                   >
                     Delete
                   </button>
                 )}
                 <button
-                  onClick={() => setShowEventModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                  onClick={() => {
+                    setShowEventModal(false);
+                    setDragStartDate(null);
+                    setDragEndDate(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-700 text-gray-200 rounded-lg font-medium hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveEvent}
                   disabled={!formData.title.trim()}
-                  className="flex-1 px-4 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingEvent ? 'Update' : 'Create'}
                 </button>

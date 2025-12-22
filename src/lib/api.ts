@@ -93,6 +93,24 @@ export interface ItemsResponse {
   };
 }
 
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  color: string;
+  created_at: string;
+  updated_at: string;
+}
+
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export const api = {
   // Get items with filtering and search
   async getItems(query: ItemsQuery = {}): Promise<ItemsResponse> {
@@ -462,6 +480,86 @@ export const api = {
       return true;
     } catch (error) {
       debugError('addReaction', error);
+      return false;
+    }
+  },
+
+  async getCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+    try {
+      const start = formatDateLocal(startDate);
+      const end = formatDateLocal(endDate);
+
+      debugLog('getCalendarEvents called', { start, end });
+
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .lte('start_date', end)
+        .gte('end_date', start)
+        .order('start_date', { ascending: true });
+
+      if (error) throw error;
+      debugLog('getCalendarEvents success', { count: data?.length });
+      return (data || []) as CalendarEvent[];
+    } catch (error) {
+      debugError('getCalendarEvents', error);
+      return [];
+    }
+  },
+
+  async createCalendarEvent(event: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>): Promise<CalendarEvent | null> {
+    try {
+      debugLog('createCalendarEvent called', event);
+
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .insert([event])
+        .select()
+        .single();
+
+      if (error) throw error;
+      debugLog('createCalendarEvent success', data);
+      return data as CalendarEvent;
+    } catch (error) {
+      debugError('createCalendarEvent', error);
+      throw error;
+    }
+  },
+
+  async updateCalendarEvent(id: string, updates: Partial<Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>>): Promise<CalendarEvent | null> {
+    try {
+      debugLog('updateCalendarEvent called', { id, updates });
+
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      debugLog('updateCalendarEvent success', data);
+      return data as CalendarEvent;
+    } catch (error) {
+      debugError('updateCalendarEvent', error);
+      return null;
+    }
+  },
+
+  async deleteCalendarEvent(id: string): Promise<boolean> {
+    try {
+      debugLog('deleteCalendarEvent called', { id });
+
+      const { error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      debugLog('deleteCalendarEvent success', { id });
+      return true;
+    } catch (error) {
+      debugError('deleteCalendarEvent', error);
       return false;
     }
   },
