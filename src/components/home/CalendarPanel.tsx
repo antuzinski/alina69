@@ -39,10 +39,13 @@ const CalendarPanel: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [viewMode, setViewMode] = useState<'calendar' | 'week' | 'list'>('calendar');
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartDate, setDragStartDate] = useState<Date | null>(null);
   const [dragEndDate, setDragEndDate] = useState<Date | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+  const [draggingEvent, setDraggingEvent] = useState<CalendarEvent | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
 
   const googleCalendarApiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY || '';
   const googleCalendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID || '';
@@ -156,6 +159,20 @@ const CalendarPanel: React.FC = () => {
     return days;
   };
 
+  const getWeekDays = () => {
+    const curr = new Date(currentDate);
+    const first = curr.getDate() - (curr.getDay() === 0 ? 6 : curr.getDay() - 1);
+
+    const week: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(curr);
+      day.setDate(first + i);
+      week.push(day);
+    }
+
+    return week;
+  };
+
   const getEventsForDate = (date: Date | null) => {
     if (!date) return [];
     const dateStr = formatDateLocal(date);
@@ -227,11 +244,59 @@ const CalendarPanel: React.FC = () => {
     setShowEventModal(true);
   };
 
-  const handleDeleteEvent = async (eventId: string, e: React.MouseEvent) => {
+  const handleDeleteEvent = (eventId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this event?')) {
-      await api.deleteCalendarEvent(eventId);
+    setEventToDelete(eventId);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (eventToDelete) {
+      await api.deleteCalendarEvent(eventToDelete);
+      setEventToDelete(null);
       loadLocalEvents();
+    }
+  };
+
+  const handleEventDragStart = (event: CalendarEvent, e: React.DragEvent) => {
+    if ((event as any).isGoogleEvent) {
+      e.preventDefault();
+      return;
+    }
+    setDraggingEvent(event);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDateDragOver = (date: Date, e: React.DragEvent) => {
+    if (!draggingEvent) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverDate(date);
+  };
+
+  const handleDateDrop = async (date: Date, e: React.DragEvent) => {
+    e.preventDefault();
+    if (!draggingEvent) return;
+
+    const originalStart = new Date(draggingEvent.start_date);
+    const originalEnd = new Date(draggingEvent.end_date);
+    const daysDiff = Math.round((originalEnd.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    const newStart = formatDateLocal(date);
+    const newEndDate = new Date(date);
+    newEndDate.setDate(newEndDate.getDate() + daysDiff);
+    const newEnd = formatDateLocal(newEndDate);
+
+    try {
+      await api.updateCalendarEvent(draggingEvent.id, {
+        start_date: newStart,
+        end_date: newEnd,
+      });
+      loadLocalEvents();
+    } catch (error) {
+      console.error('Error moving event:', error);
+    } finally {
+      setDraggingEvent(null);
+      setDragOverDate(null);
     }
   };
 
@@ -302,7 +367,17 @@ const CalendarPanel: React.FC = () => {
                   : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
-              Calendar
+              Month
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Week
             </button>
             <button
               onClick={() => setViewMode('list')}
@@ -369,17 +444,20 @@ const CalendarPanel: React.FC = () => {
               const dayEvents = getEventsForDate(date);
               const isToday = date && date.toDateString() === new Date().toDateString();
               const inDragRange = isDateInDragRange(date);
+              const isDragOver = dragOverDate && date && dragOverDate.toDateString() === date.toDateString();
 
               return (
                 <div
                   key={index}
                   onMouseDown={() => handleMouseDown(date)}
                   onMouseEnter={() => handleMouseEnter(date)}
+                  onDragOver={(e) => date && handleDateDragOver(date, e)}
+                  onDrop={(e) => date && handleDateDrop(date, e)}
                   className={`min-h-[100px] p-2 border rounded-lg transition-all select-none ${
                     date
                       ? `bg-gray-800 hover:bg-gray-750 border-gray-700 cursor-pointer ${
                           inDragRange ? 'bg-blue-900 border-blue-600' : ''
-                        }`
+                        } ${isDragOver ? 'ring-2 ring-green-500 bg-green-900' : ''}`
                       : 'bg-gray-900 border-gray-800'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                 >
@@ -396,9 +474,11 @@ const CalendarPanel: React.FC = () => {
                         {dayEvents.slice(0, 3).map(event => (
                           <div
                             key={event.id}
+                            draggable={!(event as any).isGoogleEvent}
+                            onDragStart={(e) => handleEventDragStart(event, e)}
                             className={`text-xs px-2 py-1 rounded text-white group relative flex items-center justify-between ${
-                              (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-pointer'
-                            }`}
+                              (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
+                            } ${draggingEvent?.id === event.id ? 'opacity-50' : ''}`}
                             style={{ backgroundColor: event.color }}
                             onClick={(e) => handleEditEvent(event, e)}
                             title={(event as any).isGoogleEvent ? 'Google Calendar Event (read-only)' : event.title}
@@ -419,6 +499,69 @@ const CalendarPanel: React.FC = () => {
                       </div>
                     </>
                   )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : viewMode === 'week' ? (
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {weekDays.map(day => (
+              <div
+                key={day}
+                className="text-center text-sm font-medium text-gray-500 py-2"
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {getWeekDays().map((date, index) => {
+              const dayEvents = getEventsForDate(date);
+              const isToday = date.toDateString() === new Date().toDateString();
+              const isDragOver = dragOverDate && dragOverDate.toDateString() === date.toDateString();
+
+              return (
+                <div
+                  key={index}
+                  onDragOver={(e) => handleDateDragOver(date, e)}
+                  onDrop={(e) => handleDateDrop(date, e)}
+                  className={`min-h-[400px] p-3 border rounded-lg transition-all ${
+                    isToday
+                      ? 'ring-2 ring-blue-500 bg-gray-800 border-gray-700'
+                      : 'bg-gray-800 border-gray-700'
+                  } ${isDragOver ? 'ring-2 ring-green-500 bg-green-900' : ''}`}
+                >
+                  <div className={`text-lg font-semibold mb-3 ${isToday ? 'text-blue-400' : 'text-gray-300'}`}>
+                    {date.getDate()}
+                  </div>
+                  <div className="space-y-2">
+                    {dayEvents.map(event => (
+                      <div
+                        key={event.id}
+                        draggable={!(event as any).isGoogleEvent}
+                        onDragStart={(e) => handleEventDragStart(event, e)}
+                        className={`text-xs px-2 py-2 rounded text-white ${
+                          (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
+                        } ${draggingEvent?.id === event.id ? 'opacity-50' : ''}`}
+                        style={{ backgroundColor: event.color }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditEvent(event, e);
+                        }}
+                      >
+                        <div className="font-medium truncate">{event.title}</div>
+                        {event.start_time && (
+                          <div className="text-[10px] opacity-75 mt-1">
+                            {event.start_time.slice(0, 5)}
+                            {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -642,6 +785,35 @@ const CalendarPanel: React.FC = () => {
                   className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingEvent ? 'Update' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eventToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-700">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-gray-100 mb-4">
+                Delete Event?
+              </h3>
+              <p className="text-gray-400 mb-6">
+                This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEventToDelete(null)}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteEvent}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  Delete
                 </button>
               </div>
             </div>

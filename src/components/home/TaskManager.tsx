@@ -55,6 +55,7 @@ const TaskManager: React.FC = () => {
   const [addingSubtaskTo, setAddingSubtaskTo] = useState<string | null>(null);
   const [subtaskInput, setSubtaskInput] = useState('');
   const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -341,9 +342,14 @@ const TaskManager: React.FC = () => {
     });
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (window.confirm('Удалить эту задачу?')) {
-      await deleteTaskMutation.mutateAsync(taskId);
+  const handleDeleteTask = (taskId: string) => {
+    setTaskToDelete(taskId);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (taskToDelete) {
+      await deleteTaskMutation.mutateAsync(taskToDelete);
+      setTaskToDelete(null);
     }
   };
 
@@ -761,6 +767,35 @@ const TaskManager: React.FC = () => {
           })}
         </div>
       </div>
+
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full border border-gray-700">
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-gray-100 mb-4">
+                Удалить задачу?
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Это действие нельзя отменить.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setTaskToDelete(null)}
+                  className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded-lg transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={confirmDeleteTask}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
