@@ -481,6 +481,7 @@ const TaskManager: React.FC = () => {
     }
     setDragPosition(null);
     setDragOverTask(null);
+    setDropZoneColumn(null);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -536,6 +537,7 @@ const TaskManager: React.FC = () => {
     setDraggedTask(null);
     setDragOverTask(null);
     setDragPosition(null);
+    setDropZoneColumn(null);
   }, [draggedTask, tasks, batchUpdateTasksMutation, updateTaskMutation]);
 
   const handleDrop = useCallback(async (targetColumn: string) => {

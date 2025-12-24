@@ -281,69 +281,78 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
           const eventGroups = groupOverlappingEvents(dayEvents);
 
           return (
-            <div key={date} className="mb-6">
-              <div className="sticky top-0 bg-gray-900 px-4 py-3 border-b border-gray-800 backdrop-blur-sm bg-opacity-95 z-10">
-                <h3 className="text-xs font-bold text-blue-400 tracking-wider">
+            <div key={date} className="mb-8 pb-6 border-b-2 border-gray-800 last:border-b-0">
+              <div className="sticky top-0 bg-gray-900 px-4 py-4 border-b-2 border-blue-500/30 backdrop-blur-sm bg-opacity-95 z-10 mb-3">
+                <h3 className="text-sm font-bold text-blue-400 tracking-wider">
                   {formatDateHeader(dayEvents[0].start)}
                 </h3>
-                <p className="text-[10px] text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-500 mt-1">
                   {new Date(dayEvents[0].start).toLocaleDateString('en-US', {
+                    weekday: 'long',
                     year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
+                    month: 'long',
+                    day: 'numeric',
                   })}
                 </p>
               </div>
-              <div className="px-4 py-2 space-y-2">
+              <div className="px-4 py-2 space-y-3">
                 {eventGroups.map((group, groupIndex) => {
                   const hasOverlap = group.events.length > 1;
 
                   return (
                     <div key={`group-${groupIndex}`}>
                       {hasOverlap ? (
-                        <div className="flex gap-2">
-                          {group.events.map((event, eventIndex) => {
-                            const eventColor = getEventColor(dateIndex * 10 + groupIndex * 10 + eventIndex);
+                        <div className="relative">
+                          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-500 to-orange-500 rounded-full opacity-70" />
+                          <div className="flex gap-2 pl-2">
+                            {group.events.map((event, eventIndex) => {
+                              const eventColor = getEventColor(dateIndex * 10 + groupIndex * 10 + eventIndex);
 
-                            return (
-                              <div
-                                key={event.id}
-                                className="flex-1 min-w-0"
-                              >
-                                <div className="py-2 px-3 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border border-gray-700 hover:border-gray-600 hover:shadow-lg"
-                                  style={{
-                                    backgroundColor: `${eventColor}15`,
-                                    borderLeftColor: eventColor,
-                                    borderLeftWidth: '3px',
-                                  }}
+                              return (
+                                <div
+                                  key={event.id}
+                                  className="flex-1 min-w-0 relative"
                                 >
-                                  <div className="flex items-start gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xs text-gray-400 font-medium truncate">
-                                          {formatTime(event.start)}
-                                        </span>
-                                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: eventColor }} />
+                                  <div className="absolute -top-2 -right-2 bg-yellow-500 text-gray-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10">
+                                    ⚡
+                                  </div>
+                                  <div className="py-3 px-3 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border-2 border-yellow-500/40 hover:border-yellow-500/60 hover:shadow-lg hover:shadow-yellow-500/20"
+                                    style={{
+                                      backgroundColor: `${eventColor}20`,
+                                    }}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <div
+                                        className="w-1 h-full rounded-full flex-shrink-0 absolute left-0 top-0 bottom-0"
+                                        style={{ backgroundColor: eventColor }}
+                                      />
+                                      <div className="flex-1 min-w-0 pl-3">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                          <span className="text-xs text-gray-300 font-semibold truncate">
+                                            {formatTime(event.start)}
+                                          </span>
+                                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: eventColor }} />
+                                        </div>
+                                        <h4 className="font-bold text-white text-sm mb-1 group-hover:text-yellow-300 transition-colors line-clamp-1">
+                                          {event.summary}
+                                        </h4>
+                                        {event.description && (
+                                          <p className="text-xs text-gray-400 line-clamp-1 leading-relaxed">
+                                            {event.description}
+                                          </p>
+                                        )}
+                                        {event.location && (
+                                          <p className="text-xs text-gray-500 mt-1 truncate">
+                                            📍 {event.location}
+                                          </p>
+                                        )}
                                       </div>
-                                      <h4 className="font-semibold text-white text-sm mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">
-                                        {event.summary}
-                                      </h4>
-                                      {event.description && (
-                                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-                                          {event.description}
-                                        </p>
-                                      )}
-                                      {event.location && (
-                                        <p className="text-xs text-gray-500 mt-1 truncate">
-                                          📍 {event.location}
-                                        </p>
-                                      )}
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
                       ) : (
                         <div key={group.events[0].id}>
@@ -353,19 +362,22 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
                             return (
                               <div
                                 key={event.id}
-                                className="py-2 px-3 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border border-gray-800 hover:border-gray-700 hover:shadow-lg"
+                                className="py-3 px-4 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border border-gray-700 hover:border-gray-600 hover:shadow-lg relative"
                                 style={{
-                                  backgroundColor: `${eventColor}15`,
-                                  borderLeftColor: eventColor,
-                                  borderLeftWidth: '3px',
+                                  backgroundColor: `${eventColor}10`,
                                 }}
                               >
-                                <div className="flex items-start gap-2">
+                                <div
+                                  className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+                                  style={{ backgroundColor: eventColor }}
+                                />
+                                <div className="flex items-start gap-3 pl-3">
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="text-xs text-gray-400 font-medium">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <span className="text-xs text-gray-400 font-semibold">
                                         {formatTime(event.start)}
                                       </span>
+                                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: eventColor }} />
                                     </div>
                                     <h4 className="font-semibold text-white text-sm mb-1 group-hover:text-blue-300 transition-colors">
                                       {event.summary}
@@ -376,7 +388,7 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
                                       </p>
                                     )}
                                     {event.location && (
-                                      <p className="text-xs text-gray-500 mt-1 truncate">
+                                      <p className="text-xs text-gray-500 mt-1.5 truncate">
                                         📍 {event.location}
                                       </p>
                                     )}
