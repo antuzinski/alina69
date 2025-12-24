@@ -201,18 +201,6 @@ const CalendarPanel: React.FC = () => {
     return time1Start < time2End && time2Start < time1End;
   };
 
-  const hasOverlappingEvents = (events: CalendarEvent[], currentIndex: number): boolean => {
-    const currentEvent = events[currentIndex];
-
-    for (let i = 0; i < currentIndex; i++) {
-      if (eventsOverlap(events[i], currentEvent)) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
   const handleMouseDown = (date: Date | null) => {
     if (!date) return;
     setIsDragging(true);
@@ -588,36 +576,43 @@ const CalendarPanel: React.FC = () => {
                   </div>
                   <div className="space-y-2">
                     {dayEvents.map((event, eventIndex) => {
-                      const hasOverlap = hasOverlappingEvents(dayEvents, eventIndex);
+                      const nextEvent = dayEvents[eventIndex + 1];
+                      const overlapsWithNext = nextEvent ? eventsOverlap(event, nextEvent) : false;
+
                       return (
-                        <div
-                          key={event.id}
-                          draggable={!(event as any).isGoogleEvent}
-                          onDragStart={(e) => handleEventDragStart(event, e)}
-                          className={`text-xs px-2 py-2 rounded text-white relative ${
-                            (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
-                          } ${draggingEvent?.id === event.id ? 'opacity-50' : ''} ${
-                            hasOverlap ? 'ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/20' : ''
-                          }`}
-                          style={{ backgroundColor: event.color }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditEvent(event, e);
-                          }}
-                        >
-                          {hasOverlap && (
-                            <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
-                              ⚡
+                        <React.Fragment key={event.id}>
+                          <div
+                            draggable={!(event as any).isGoogleEvent}
+                            onDragStart={(e) => handleEventDragStart(event, e)}
+                            className={`text-xs px-2 py-2 rounded text-white ${
+                              (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
+                            } ${draggingEvent?.id === event.id ? 'opacity-50' : ''}`}
+                            style={{ backgroundColor: event.color }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditEvent(event, e);
+                            }}
+                          >
+                            <div className="font-medium truncate">{event.title}</div>
+                            {event.start_time && (
+                              <div className="text-[10px] opacity-75 mt-1">
+                                {event.start_time.slice(0, 5)}
+                                {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
+                              </div>
+                            )}
+                          </div>
+
+                          {overlapsWithNext && (
+                            <div className="flex items-center justify-center py-1 -my-1">
+                              <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 px-4 py-1.5 rounded-full shadow-lg animate-pulse">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-white text-[10px] font-bold uppercase tracking-wide">Пересечение</span>
+                              </div>
                             </div>
                           )}
-                          <div className="font-medium truncate">{event.title}</div>
-                          {event.start_time && (
-                            <div className="text-[10px] opacity-75 mt-1">
-                              {event.start_time.slice(0, 5)}
-                              {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
-                            </div>
-                          )}
-                        </div>
+                        </React.Fragment>
                       );
                     })}
                   </div>
