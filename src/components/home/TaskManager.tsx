@@ -56,6 +56,8 @@ const TaskManager: React.FC = () => {
   const [subtaskInput, setSubtaskInput] = useState('');
   const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
+  const [dragOverTask, setDragOverTask] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -432,12 +434,78 @@ const TaskManager: React.FC = () => {
     setCollapsedTasks(newCollapsed);
   };
 
-  const handleDragStart = (task: Task) => {
+  const handleDragStart = (task: Task, e: React.DragEvent) => {
     setDraggedTask(task);
+    setDragPosition({ x: e.clientX, y: e.clientY });
+
+    const emptyImg = new Image();
+    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(emptyImg, 0, 0);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    if (e.clientX === 0 && e.clientY === 0) return;
+    setDragPosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleDragEnd = () => {
+    setDragPosition(null);
+    setDragOverTask(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+  };
+
+  const handleTaskDragOver = (task: Task, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedTask && draggedTask.id !== task.id && !task.parent_task_id) {
+      setDragOverTask(task.id);
+    }
+  };
+
+  const handleTaskDrop = async (targetTask: Task, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedTask || draggedTask.id === targetTask.id) return;
+
+    const sameColumn = draggedTask.column_name === targetTask.column_name;
+
+    if (sameColumn) {
+      const columnTasks = tasks.filter(
+        t => t.column_name === targetTask.column_name && !t.completed_at && !t.parent_task_id
+      ).sort((a, b) => a.position - b.position);
+
+      const draggedIndex = columnTasks.findIndex(t => t.id === draggedTask.id);
+      const targetIndex = columnTasks.findIndex(t => t.id === targetTask.id);
+
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        columnTasks.splice(draggedIndex, 1);
+        columnTasks.splice(targetIndex, 0, draggedTask);
+
+        for (let i = 0; i < columnTasks.length; i++) {
+          await updateTaskMutation.mutateAsync({
+            id: columnTasks[i].id,
+            updates: { position: i },
+          });
+        }
+      }
+    } else {
+      await updateTaskMutation.mutateAsync({
+        id: draggedTask.id,
+        updates: {
+          column_name: targetTask.column_name,
+          position: targetTask.position,
+        },
+      });
+    }
+
+    setDraggedTask(null);
+    setDragOverTask(null);
+    setDragPosition(null);
   };
 
   const handleDrop = async (targetColumn: string) => {
@@ -462,6 +530,8 @@ const TaskManager: React.FC = () => {
     }
 
     setDraggedTask(null);
+    setDragOverTask(null);
+    setDragPosition(null);
   };
 
   const toggleCollapse = (taskId: string) => {
@@ -483,14 +553,23 @@ const TaskManager: React.FC = () => {
     const isCollapsed = collapsedTasks.has(task.id);
     const isCompleted = !!task.completed_at;
 
+    const isDragging = draggedTask?.id === task.id;
+    const isDragOver = dragOverTask === task.id;
+
     return (
       <div key={task.id} className={`${isSubtask ? 'ml-6' : ''}`}>
         <div
           draggable={!isSubtask && !isCompleted}
-          onDragStart={() => !isCompleted && handleDragStart(task)}
+          onDragStart={(e) => !isCompleted && handleDragStart(task, e)}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleTaskDragOver(task, e)}
+          onDrop={(e) => handleTaskDrop(task, e)}
           className={`group bg-gray-800 rounded-lg p-3 mb-2 transition-all ${
             isCompleting ? 'opacity-50' : ''
-          } ${isCompleted ? 'opacity-60' : ''} ${!isSubtask && !isCompleted ? 'cursor-move' : ''}`}
+          } ${isCompleted ? 'opacity-60' : ''} ${!isSubtask && !isCompleted ? 'cursor-move' : ''} ${
+            isDragging ? 'opacity-0' : ''
+          } ${isDragOver ? 'border-t-2 border-blue-500' : ''}`}
           style={{ borderLeft: task.color ? `4px solid ${task.color}` : undefined }}
         >
           {isEditing ? (
@@ -824,6 +903,38 @@ const TaskManager: React.FC = () => {
                 >
                   Удалить
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {draggedTask && dragPosition && (
+        <div
+          style={{
+            position: 'fixed',
+            left: dragPosition.x,
+            top: dragPosition.y,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          <div
+            className="bg-gray-800 rounded-lg p-3 shadow-2xl border-2 border-white/30 min-w-[200px] max-w-[300px]"
+            style={{ borderLeft: draggedTask.color ? `4px solid ${draggedTask.color}` : undefined }}
+          >
+            <div className="flex items-start space-x-2">
+              <GripVertical className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-gray-100 text-sm font-medium">
+                  {draggedTask.title}
+                </div>
+                {draggedTask.description && (
+                  <div className="text-gray-400 text-xs mt-1 truncate">
+                    {draggedTask.description}
+                  </div>
+                )}
               </div>
             </div>
           </div>
