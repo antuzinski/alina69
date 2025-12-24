@@ -72,6 +72,39 @@ const TaskManager: React.FC = () => {
   }, [colorPickerOpen]);
 
   useEffect(() => {
+    const checkAndArchiveTasks = async () => {
+      const now = new Date();
+      const { data: completedTasks } = await supabase
+        .from('tasks')
+        .select('id, completed_at')
+        .not('completed_at', 'is', null)
+        .is('archived_at', null);
+
+      if (completedTasks && completedTasks.length > 0) {
+        const tasksToArchive = completedTasks.filter(task => {
+          const completedDate = new Date(task.completed_at);
+          const hoursSinceCompletion = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
+          return hoursSinceCompletion >= 24;
+        });
+
+        if (tasksToArchive.length > 0) {
+          await supabase
+            .from('tasks')
+            .update({ archived_at: now.toISOString() })
+            .in('id', tasksToArchive.map(t => t.id));
+
+          queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        }
+      }
+    };
+
+    checkAndArchiveTasks();
+    const interval = setInterval(checkAndArchiveTasks, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [queryClient]);
+
+  useEffect(() => {
     console.log('[TaskManager] Setting up Realtime subscription...');
 
     const channel = supabase
@@ -278,9 +311,9 @@ const TaskManager: React.FC = () => {
     try {
       const columnTasks = tasks.filter(t => t.column_name === column);
       const activeColumnTasks = columnTasks.filter(t => !t.completed_at);
-      const maxPosition = activeColumnTasks.length > 0
-        ? Math.max(...activeColumnTasks.map(t => t.position))
-        : -1;
+      const minPosition = activeColumnTasks.length > 0
+        ? Math.min(...activeColumnTasks.map(t => t.position))
+        : 0;
 
       const selectedColor = newTaskColors[column];
 
@@ -290,7 +323,7 @@ const TaskManager: React.FC = () => {
         color: selectedColor,
         column_name: column,
         parent_task_id: null,
-        position: maxPosition + 1,
+        position: minPosition - 1,
       });
 
       for (let i = 1; i < parts.length; i++) {

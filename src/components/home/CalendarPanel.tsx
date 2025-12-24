@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, Trash2, ExternalLink } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { api, CalendarEvent } from '../../lib/api';
 
 function formatDateLocal(date: Date): string {
@@ -447,12 +448,14 @@ const CalendarPanel: React.FC = () => {
               const isDragOver = dragOverDate && date && dragOverDate.toDateString() === date.toDateString();
 
               return (
-                <div
+                <motion.div
                   key={index}
                   onMouseDown={() => handleMouseDown(date)}
                   onMouseEnter={() => handleMouseEnter(date)}
                   onDragOver={(e) => date && handleDateDragOver(date, e)}
                   onDrop={(e) => date && handleDateDrop(date, e)}
+                  whileTap={date ? { scale: 0.95 } : {}}
+                  transition={{ duration: 0.1 }}
                   className={`min-h-[100px] p-2 border rounded-lg transition-all select-none ${
                     date
                       ? `bg-gray-800 hover:bg-gray-750 border-gray-700 cursor-pointer ${
@@ -499,7 +502,7 @@ const CalendarPanel: React.FC = () => {
                       </div>
                     </>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -524,14 +527,29 @@ const CalendarPanel: React.FC = () => {
               const isDragOver = dragOverDate && dragOverDate.toDateString() === date.toDateString();
 
               return (
-                <div
+                <motion.div
                   key={index}
+                  onClick={() => {
+                    setSelectedDate(date);
+                    setDragEndDate(null);
+                    setFormData({
+                      title: '',
+                      description: '',
+                      color: '#3b82f6',
+                      start_time: '',
+                      end_time: '',
+                    });
+                    setEditingEvent(null);
+                    setShowEventModal(true);
+                  }}
                   onDragOver={(e) => handleDateDragOver(date, e)}
                   onDrop={(e) => handleDateDrop(date, e)}
-                  className={`min-h-[400px] p-3 border rounded-lg transition-all ${
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.1 }}
+                  className={`min-h-[400px] p-3 border rounded-lg transition-all cursor-pointer ${
                     isToday
                       ? 'ring-2 ring-blue-500 bg-gray-800 border-gray-700'
-                      : 'bg-gray-800 border-gray-700'
+                      : 'bg-gray-800 border-gray-700 hover:bg-gray-750'
                   } ${isDragOver ? 'ring-2 ring-green-500 bg-green-900' : ''}`}
                 >
                   <div className={`text-lg font-semibold mb-3 ${isToday ? 'text-blue-400' : 'text-gray-300'}`}>
@@ -562,7 +580,7 @@ const CalendarPanel: React.FC = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
