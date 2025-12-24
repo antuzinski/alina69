@@ -115,6 +115,39 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
     });
   };
 
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatDateHeader = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'TODAY';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'TOMORROW';
+    }
+
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    }).toUpperCase();
+  };
+
+  const getEventColor = (index: number) => {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    return colors[index % colors.length];
+  };
+
   const groupEventsByDate = (events: CalendarEvent[]) => {
     const grouped: { [key: string]: CalendarEvent[] } = {};
 
@@ -171,7 +204,7 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto">
         {loading && (
           <div className="text-center text-gray-400 py-8">Loading events...</div>
         )}
@@ -194,38 +227,66 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
           </div>
         )}
 
-        {!loading && !error && Object.entries(groupedEvents).map(([date, dayEvents]) => (
-          <div key={date} className="space-y-2">
-            <h3 className="text-sm font-medium text-gray-400 sticky top-0 bg-gray-900 py-2">
-              {new Date(dayEvents[0].start).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </h3>
-            {dayEvents.map((event) => (
-              <div
-                key={event.id}
-                className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-blue-500 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-white mb-1">{event.summary}</h4>
-                    <p className="text-sm text-gray-400">
-                      {formatDate(event.start)}
-                    </p>
-                    {event.location && (
-                      <p className="text-sm text-gray-500 mt-1">{event.location}</p>
-                    )}
-                    {event.description && (
-                      <p className="text-sm text-gray-300 mt-2 line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
+        {!loading && !error && Object.entries(groupedEvents).map(([date, dayEvents], dateIndex) => (
+          <div key={date} className="mb-6">
+            <div className="sticky top-0 bg-gray-900 px-4 py-3 border-b border-gray-800 backdrop-blur-sm bg-opacity-95 z-10">
+              <h3 className="text-xs font-bold text-blue-400 tracking-wider">
+                {formatDateHeader(dayEvents[0].start)}
+              </h3>
+              <p className="text-[10px] text-gray-500 mt-0.5">
+                {new Date(dayEvents[0].start).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                })}
+              </p>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {dayEvents.map((event, eventIndex) => {
+                const eventColor = getEventColor(dateIndex * 10 + eventIndex);
+                return (
+                  <div
+                    key={event.id}
+                    className="px-4 py-3 hover:bg-gray-800/50 transition-colors cursor-pointer group md:py-2"
+                  >
+                    <div className="flex gap-3 md:gap-4">
+                      <div
+                        className="w-1 rounded-full flex-shrink-0 md:w-0.5"
+                        style={{ backgroundColor: eventColor }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col md:flex-row md:items-start md:gap-4">
+                          <div className="flex items-center gap-2 mb-1.5 md:mb-0 md:w-28 md:flex-shrink-0">
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0 md:w-1.5 md:h-1.5"
+                              style={{ backgroundColor: eventColor }}
+                            />
+                            <span className="text-xs text-gray-400 font-medium md:text-[11px]">
+                              {formatTime(event.start)}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-white text-[15px] mb-0.5 group-hover:text-blue-400 transition-colors md:text-sm">
+                              {event.summary}
+                            </h4>
+                            {event.description && (
+                              <p className="text-sm text-gray-300 mt-1 line-clamp-2 leading-relaxed md:text-xs md:text-gray-400">
+                                {event.description}
+                              </p>
+                            )}
+                            {event.location && (
+                              <p className="text-xs text-gray-500 mt-1.5 md:text-[11px]">
+                                📍 {event.location}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         ))}
       </div>

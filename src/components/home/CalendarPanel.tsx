@@ -454,9 +454,10 @@ const CalendarPanel: React.FC = () => {
                   onMouseEnter={() => handleMouseEnter(date)}
                   onDragOver={(e) => date && handleDateDragOver(date, e)}
                   onDrop={(e) => date && handleDateDrop(date, e)}
-                  whileTap={date ? { scale: 0.95 } : {}}
-                  transition={{ duration: 0.1 }}
-                  className={`min-h-[100px] p-2 border rounded-lg transition-all select-none ${
+                  whileTap={date ? { scale: 0.96 } : {}}
+                  whileHover={date ? { scale: 1.02 } : {}}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className={`min-h-[100px] p-2 border rounded-lg select-none ${
                     date
                       ? `bg-gray-800 hover:bg-gray-750 border-gray-700 cursor-pointer ${
                           inDragRange ? 'bg-blue-900 border-blue-600' : ''
@@ -544,9 +545,10 @@ const CalendarPanel: React.FC = () => {
                   }}
                   onDragOver={(e) => handleDateDragOver(date, e)}
                   onDrop={(e) => handleDateDrop(date, e)}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ duration: 0.1 }}
-                  className={`min-h-[400px] p-3 border rounded-lg transition-all cursor-pointer ${
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.01 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className={`min-h-[400px] p-3 border rounded-lg cursor-pointer ${
                     isToday
                       ? 'ring-2 ring-blue-500 bg-gray-800 border-gray-700'
                       : 'bg-gray-800 border-gray-700 hover:bg-gray-750'
