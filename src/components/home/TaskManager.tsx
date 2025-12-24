@@ -58,6 +58,7 @@ const TaskManager: React.FC = () => {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragOverTask, setDragOverTask] = useState<string | null>(null);
+  const [dropZoneColumn, setDropZoneColumn] = useState<string | null>(null);
   const dragFrameRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
@@ -491,6 +492,7 @@ const TaskManager: React.FC = () => {
     e.stopPropagation();
     if (draggedTask && draggedTask.id !== task.id && !task.parent_task_id) {
       setDragOverTask(task.id);
+      setDropZoneColumn(null);
     }
   }, [draggedTask]);
 
@@ -560,6 +562,38 @@ const TaskManager: React.FC = () => {
     setDraggedTask(null);
     setDragOverTask(null);
     setDragPosition(null);
+    setDropZoneColumn(null);
+  }, [draggedTask, tasks, updateTaskMutation]);
+
+  const handleDropZoneDragOver = useCallback((e: React.DragEvent, column: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropZoneColumn(column);
+    setDragOverTask(null);
+  }, []);
+
+  const handleDropZoneDrop = useCallback(async (column: string) => {
+    if (!draggedTask) return;
+
+    const columnTasks = tasks.filter(
+      t => t.column_name === column && !t.parent_task_id && !t.completed_at
+    );
+    const maxPosition = columnTasks.length > 0
+      ? Math.max(...columnTasks.map(t => t.position))
+      : -1;
+
+    await updateTaskMutation.mutateAsync({
+      id: draggedTask.id,
+      updates: {
+        column_name: column,
+        position: maxPosition + 1,
+      },
+    });
+
+    setDraggedTask(null);
+    setDragOverTask(null);
+    setDragPosition(null);
+    setDropZoneColumn(null);
   }, [draggedTask, tasks, updateTaskMutation]);
 
   const toggleCollapse = useCallback((taskId: string) => {
@@ -647,13 +681,15 @@ const TaskManager: React.FC = () => {
             </div>
           ) : (
             <div className="flex items-start space-x-2">
-              {!isSubtask && (
+              {!isSubtask ? (
                 <GripVertical className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+              ) : (
+                <div className="w-4 h-4 flex-shrink-0" />
               )}
-              {hasSubtasks && (
+              {hasSubtasks ? (
                 <button
                   onClick={() => toggleCollapse(task.id)}
-                  className="text-gray-400 hover:text-gray-300 mt-0.5"
+                  className="text-gray-400 hover:text-gray-300 mt-0.5 flex-shrink-0"
                 >
                   {isCollapsed ? (
                     <ChevronRight className="w-4 h-4" />
@@ -661,6 +697,8 @@ const TaskManager: React.FC = () => {
                     <ChevronDown className="w-4 h-4" />
                   )}
                 </button>
+              ) : (
+                <div className="w-4 h-4 flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className={`text-gray-100 text-sm font-medium ${isCompleted ? 'line-through' : ''}`}>
@@ -909,6 +947,15 @@ const TaskManager: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto p-4">
                   {columnTasks.map((task) => renderTask(task))}
+                  <div
+                    onDragOver={(e) => handleDropZoneDragOver(e, column)}
+                    onDrop={() => handleDropZoneDrop(column)}
+                    className={`mt-2 h-12 rounded-lg border-2 border-dashed transition-all ${
+                      dropZoneColumn === column
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : 'border-transparent'
+                    }`}
+                  />
                 </div>
               </div>
             );

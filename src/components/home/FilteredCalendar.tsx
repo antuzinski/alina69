@@ -179,17 +179,37 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
     return (start1 < end2 && start2 < end1);
   };
 
-  const getOverlappingEvents = (events: CalendarEvent[], currentIndex: number): number => {
-    const currentEvent = events[currentIndex];
-    let overlapCount = 0;
+  interface EventGroup {
+    events: CalendarEvent[];
+  }
 
-    for (let i = 0; i < currentIndex; i++) {
-      if (eventsOverlap(events[i], currentEvent)) {
-        overlapCount++;
-      }
-    }
+  const groupOverlappingEvents = (events: CalendarEvent[]): EventGroup[] => {
+    const groups: EventGroup[] = [];
+    const processed = new Set<string>();
 
-    return overlapCount;
+    events.forEach(event => {
+      if (processed.has(event.id)) return;
+
+      const group: EventGroup = { events: [event] };
+      processed.add(event.id);
+
+      events.forEach(otherEvent => {
+        if (processed.has(otherEvent.id)) return;
+
+        const overlapsWithAny = group.events.some(groupEvent =>
+          eventsOverlap(groupEvent, otherEvent)
+        );
+
+        if (overlapsWithAny) {
+          group.events.push(otherEvent);
+          processed.add(otherEvent.id);
+        }
+      });
+
+      groups.push(group);
+    });
+
+    return groups;
   };
 
   const groupedEvents = groupEventsByDate(filteredEvents);
@@ -257,79 +277,123 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
           </div>
         )}
 
-        {!loading && !error && Object.entries(groupedEvents).map(([date, dayEvents], dateIndex) => (
-          <div key={date} className="mb-6">
-            <div className="sticky top-0 bg-gray-900 px-4 py-3 border-b border-gray-800 backdrop-blur-sm bg-opacity-95 z-10">
-              <h3 className="text-xs font-bold text-blue-400 tracking-wider">
-                {formatDateHeader(dayEvents[0].start)}
-              </h3>
-              <p className="text-[10px] text-gray-500 mt-0.5">
-                {new Date(dayEvents[0].start).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                })}
-              </p>
-            </div>
-            <div className="divide-y divide-gray-800">
-              {dayEvents.map((event, eventIndex) => {
-                const eventColor = getEventColor(dateIndex * 10 + eventIndex);
-                const overlapCount = getOverlappingEvents(dayEvents, eventIndex);
-                const hasOverlap = overlapCount > 0;
-                const leftPadding = overlapCount * 16;
+        {!loading && !error && Object.entries(groupedEvents).map(([date, dayEvents], dateIndex) => {
+          const eventGroups = groupOverlappingEvents(dayEvents);
 
-                return (
-                  <div
-                    key={event.id}
-                    className="py-3 hover:bg-gray-800/50 transition-colors cursor-pointer group md:py-2"
-                    style={{ paddingLeft: `${16 + leftPadding}px`, paddingRight: '16px' }}
-                  >
-                    <div className="flex gap-3 md:gap-4 relative">
-                      {hasOverlap && (
-                        <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-yellow-500/30" />
-                      )}
-                      <div
-                        className="w-1 rounded-full flex-shrink-0 md:w-0.5"
-                        style={{ backgroundColor: eventColor }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col md:flex-row md:items-start md:gap-4">
-                          <div className="flex items-center gap-2 mb-1.5 md:mb-0 md:w-28 md:flex-shrink-0">
-                            <div
-                              className="w-2 h-2 rounded-full flex-shrink-0 md:w-1.5 md:h-1.5"
-                              style={{ backgroundColor: eventColor }}
-                            />
-                            <span className="text-xs text-gray-400 font-medium md:text-[11px]">
-                              {formatTime(event.start)}
-                            </span>
-                            {hasOverlap && (
-                              <span className="text-[10px] text-yellow-500 font-medium">⚡</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-white text-[15px] mb-0.5 group-hover:text-blue-400 transition-colors md:text-sm">
-                              {event.summary}
-                            </h4>
-                            {event.description && (
-                              <p className="text-sm text-gray-300 mt-1 line-clamp-2 leading-relaxed md:text-xs md:text-gray-400">
-                                {event.description}
-                              </p>
-                            )}
-                            {event.location && (
-                              <p className="text-xs text-gray-500 mt-1.5 md:text-[11px]">
-                                📍 {event.location}
-                              </p>
-                            )}
-                          </div>
+          return (
+            <div key={date} className="mb-6">
+              <div className="sticky top-0 bg-gray-900 px-4 py-3 border-b border-gray-800 backdrop-blur-sm bg-opacity-95 z-10">
+                <h3 className="text-xs font-bold text-blue-400 tracking-wider">
+                  {formatDateHeader(dayEvents[0].start)}
+                </h3>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {new Date(dayEvents[0].start).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  })}
+                </p>
+              </div>
+              <div className="px-4 py-2 space-y-2">
+                {eventGroups.map((group, groupIndex) => {
+                  const hasOverlap = group.events.length > 1;
+
+                  return (
+                    <div key={`group-${groupIndex}`}>
+                      {hasOverlap ? (
+                        <div className="flex gap-2">
+                          {group.events.map((event, eventIndex) => {
+                            const eventColor = getEventColor(dateIndex * 10 + groupIndex * 10 + eventIndex);
+
+                            return (
+                              <div
+                                key={event.id}
+                                className="flex-1 min-w-0"
+                              >
+                                <div className="py-2 px-3 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border border-gray-700 hover:border-gray-600 hover:shadow-lg"
+                                  style={{
+                                    backgroundColor: `${eventColor}15`,
+                                    borderLeftColor: eventColor,
+                                    borderLeftWidth: '3px',
+                                  }}
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs text-gray-400 font-medium truncate">
+                                          {formatTime(event.start)}
+                                        </span>
+                                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: eventColor }} />
+                                      </div>
+                                      <h4 className="font-semibold text-white text-sm mb-1 group-hover:text-blue-300 transition-colors line-clamp-1">
+                                        {event.summary}
+                                      </h4>
+                                      {event.description && (
+                                        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                                          {event.description}
+                                        </p>
+                                      )}
+                                      {event.location && (
+                                        <p className="text-xs text-gray-500 mt-1 truncate">
+                                          📍 {event.location}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+                      ) : (
+                        <div key={group.events[0].id}>
+                          {group.events.map(event => {
+                            const eventColor = getEventColor(dateIndex * 10 + groupIndex);
+
+                            return (
+                              <div
+                                key={event.id}
+                                className="py-2 px-3 rounded-lg hover:bg-gray-800/70 transition-all cursor-pointer group border border-gray-800 hover:border-gray-700 hover:shadow-lg"
+                                style={{
+                                  backgroundColor: `${eventColor}15`,
+                                  borderLeftColor: eventColor,
+                                  borderLeftWidth: '3px',
+                                }}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs text-gray-400 font-medium">
+                                        {formatTime(event.start)}
+                                      </span>
+                                    </div>
+                                    <h4 className="font-semibold text-white text-sm mb-1 group-hover:text-blue-300 transition-colors">
+                                      {event.summary}
+                                    </h4>
+                                    {event.description && (
+                                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
+                                        {event.description}
+                                      </p>
+                                    )}
+                                    {event.location && (
+                                      <p className="text-xs text-gray-500 mt-1 truncate">
+                                        📍 {event.location}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
