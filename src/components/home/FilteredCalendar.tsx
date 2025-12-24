@@ -159,7 +159,37 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
       grouped[date].push(event);
     });
 
+    Object.keys(grouped).forEach(date => {
+      grouped[date].sort((a, b) => {
+        const timeA = new Date(a.start).getTime();
+        const timeB = new Date(b.start).getTime();
+        return timeA - timeB;
+      });
+    });
+
     return grouped;
+  };
+
+  const eventsOverlap = (event1: CalendarEvent, event2: CalendarEvent): boolean => {
+    const start1 = new Date(event1.start).getTime();
+    const end1 = new Date(event1.end).getTime();
+    const start2 = new Date(event2.start).getTime();
+    const end2 = new Date(event2.end).getTime();
+
+    return (start1 < end2 && start2 < end1);
+  };
+
+  const getOverlappingEvents = (events: CalendarEvent[], currentIndex: number): number => {
+    const currentEvent = events[currentIndex];
+    let overlapCount = 0;
+
+    for (let i = 0; i < currentIndex; i++) {
+      if (eventsOverlap(events[i], currentEvent)) {
+        overlapCount++;
+      }
+    }
+
+    return overlapCount;
   };
 
   const groupedEvents = groupEventsByDate(filteredEvents);
@@ -244,12 +274,20 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
             <div className="divide-y divide-gray-800">
               {dayEvents.map((event, eventIndex) => {
                 const eventColor = getEventColor(dateIndex * 10 + eventIndex);
+                const overlapCount = getOverlappingEvents(dayEvents, eventIndex);
+                const hasOverlap = overlapCount > 0;
+                const leftPadding = overlapCount * 16;
+
                 return (
                   <div
                     key={event.id}
-                    className="px-4 py-3 hover:bg-gray-800/50 transition-colors cursor-pointer group md:py-2"
+                    className="py-3 hover:bg-gray-800/50 transition-colors cursor-pointer group md:py-2"
+                    style={{ paddingLeft: `${16 + leftPadding}px`, paddingRight: '16px' }}
                   >
-                    <div className="flex gap-3 md:gap-4">
+                    <div className="flex gap-3 md:gap-4 relative">
+                      {hasOverlap && (
+                        <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-yellow-500/30" />
+                      )}
                       <div
                         className="w-1 rounded-full flex-shrink-0 md:w-0.5"
                         style={{ backgroundColor: eventColor }}
@@ -264,6 +302,9 @@ const FilteredCalendar: React.FC<FilteredCalendarProps> = ({
                             <span className="text-xs text-gray-400 font-medium md:text-[11px]">
                               {formatTime(event.start)}
                             </span>
+                            {hasOverlap && (
+                              <span className="text-[10px] text-yellow-500 font-medium">⚡</span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-white text-[15px] mb-0.5 group-hover:text-blue-400 transition-colors md:text-sm">
