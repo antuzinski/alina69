@@ -47,6 +47,7 @@ const CalendarPanel: React.FC = () => {
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   const [draggingEvent, setDraggingEvent] = useState<CalendarEvent | null>(null);
   const [dragOverDate, setDragOverDate] = useState<Date | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
 
   const googleCalendarApiKey = import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY || '';
   const googleCalendarId = import.meta.env.VITE_GOOGLE_CALENDAR_ID || '';
@@ -282,7 +283,21 @@ const CalendarPanel: React.FC = () => {
     }
     e.stopPropagation();
     setDraggingEvent(event);
+    setDragPosition({ x: e.clientX, y: e.clientY });
     e.dataTransfer.effectAllowed = 'move';
+
+    const emptyImg = new Image();
+    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(emptyImg, 0, 0);
+  };
+
+  const handleEventDrag = (e: React.DragEvent) => {
+    if (e.clientX === 0 && e.clientY === 0) return;
+    setDragPosition({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleEventDragEnd = () => {
+    setDragPosition(null);
   };
 
   const handleDateDragOver = (date: Date, e: React.DragEvent) => {
@@ -317,6 +332,7 @@ const CalendarPanel: React.FC = () => {
     } finally {
       setDraggingEvent(null);
       setDragOverDate(null);
+      setDragPosition(null);
     }
   };
 
@@ -586,9 +602,11 @@ const CalendarPanel: React.FC = () => {
                           <div
                             draggable={!(event as any).isGoogleEvent}
                             onDragStart={(e) => handleEventDragStart(event, e)}
+                            onDrag={handleEventDrag}
+                            onDragEnd={handleEventDragEnd}
                             className={`text-xs px-2 py-2 rounded text-white ${
                               (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
-                            } ${draggingEvent?.id === event.id ? 'opacity-50' : ''}`}
+                            } ${draggingEvent?.id === event.id ? 'opacity-0' : ''}`}
                             style={{ backgroundColor: event.color }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -874,6 +892,37 @@ const CalendarPanel: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {draggingEvent && dragPosition && (
+        <div
+          style={{
+            position: 'fixed',
+            left: dragPosition.x,
+            top: dragPosition.y,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-xs px-3 py-2.5 rounded-lg text-white shadow-2xl border-2 border-white/30"
+            style={{
+              backgroundColor: draggingEvent.color,
+              minWidth: '150px',
+            }}
+          >
+            <div className="font-medium">{draggingEvent.title}</div>
+            {draggingEvent.start_time && (
+              <div className="text-[10px] opacity-90 mt-1">
+                {draggingEvent.start_time.slice(0, 5)}
+                {draggingEvent.end_time && ` - ${draggingEvent.end_time.slice(0, 5)}`}
+              </div>
+            )}
+          </motion.div>
         </div>
       )}
     </div>
