@@ -177,11 +177,40 @@ const CalendarPanel: React.FC = () => {
   const getEventsForDate = (date: Date | null) => {
     if (!date) return [];
     const dateStr = formatDateLocal(date);
-    return allEvents.filter(event => {
+    const events = allEvents.filter(event => {
       const startDate = event.start_date;
       const endDate = event.end_date;
       return dateStr >= startDate && dateStr <= endDate;
     });
+
+    return events.sort((a, b) => {
+      const timeA = a.start_time || '00:00';
+      const timeB = b.start_time || '00:00';
+      return timeA.localeCompare(timeB);
+    });
+  };
+
+  const eventsOverlap = (event1: CalendarEvent, event2: CalendarEvent): boolean => {
+    if (event1.start_date !== event2.start_date) return false;
+
+    const time1Start = event1.start_time || '00:00';
+    const time1End = event1.end_time || '23:59';
+    const time2Start = event2.start_time || '00:00';
+    const time2End = event2.end_time || '23:59';
+
+    return time1Start < time2End && time2Start < time1End;
+  };
+
+  const hasOverlappingEvents = (events: CalendarEvent[], currentIndex: number): boolean => {
+    const currentEvent = events[currentIndex];
+
+    for (let i = 0; i < currentIndex; i++) {
+      if (eventsOverlap(events[i], currentEvent)) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const handleMouseDown = (date: Date | null) => {
@@ -558,29 +587,39 @@ const CalendarPanel: React.FC = () => {
                     {date.getDate()}
                   </div>
                   <div className="space-y-2">
-                    {dayEvents.map(event => (
-                      <div
-                        key={event.id}
-                        draggable={!(event as any).isGoogleEvent}
-                        onDragStart={(e) => handleEventDragStart(event, e)}
-                        className={`text-xs px-2 py-2 rounded text-white ${
-                          (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
-                        } ${draggingEvent?.id === event.id ? 'opacity-50' : ''}`}
-                        style={{ backgroundColor: event.color }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditEvent(event, e);
-                        }}
-                      >
-                        <div className="font-medium truncate">{event.title}</div>
-                        {event.start_time && (
-                          <div className="text-[10px] opacity-75 mt-1">
-                            {event.start_time.slice(0, 5)}
-                            {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {dayEvents.map((event, eventIndex) => {
+                      const hasOverlap = hasOverlappingEvents(dayEvents, eventIndex);
+                      return (
+                        <div
+                          key={event.id}
+                          draggable={!(event as any).isGoogleEvent}
+                          onDragStart={(e) => handleEventDragStart(event, e)}
+                          className={`text-xs px-2 py-2 rounded text-white relative ${
+                            (event as any).isGoogleEvent ? 'opacity-75 italic' : 'cursor-move'
+                          } ${draggingEvent?.id === event.id ? 'opacity-50' : ''} ${
+                            hasOverlap ? 'ring-2 ring-yellow-500/50 shadow-lg shadow-yellow-500/20' : ''
+                          }`}
+                          style={{ backgroundColor: event.color }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditEvent(event, e);
+                          }}
+                        >
+                          {hasOverlap && (
+                            <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                              ⚡
+                            </div>
+                          )}
+                          <div className="font-medium truncate">{event.title}</div>
+                          {event.start_time && (
+                            <div className="text-[10px] opacity-75 mt-1">
+                              {event.start_time.slice(0, 5)}
+                              {event.end_time && ` - ${event.end_time.slice(0, 5)}`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </motion.div>
               );

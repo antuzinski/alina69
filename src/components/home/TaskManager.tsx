@@ -84,7 +84,7 @@ const TaskManager: React.FC = () => {
         const tasksToArchive = completedTasks.filter(task => {
           const completedDate = new Date(task.completed_at);
           const hoursSinceCompletion = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
-          return hoursSinceCompletion >= 24;
+          return hoursSinceCompletion >= 1;
         });
 
         if (tasksToArchive.length > 0) {
@@ -99,7 +99,7 @@ const TaskManager: React.FC = () => {
     };
 
     checkAndArchiveTasks();
-    const interval = setInterval(checkAndArchiveTasks, 5 * 60 * 1000);
+    const interval = setInterval(checkAndArchiveTasks, 60 * 1000);
 
     return () => clearInterval(interval);
   }, [queryClient]);
@@ -191,7 +191,7 @@ const TaskManager: React.FC = () => {
           const completedDate = new Date(task.completed_at);
           const hoursSinceCompletion = (now.getTime() - completedDate.getTime()) / (1000 * 60 * 60);
 
-          if (hoursSinceCompletion >= 24) {
+          if (hoursSinceCompletion >= 1) {
             tasksToArchive.push(task.id);
             return;
           }
