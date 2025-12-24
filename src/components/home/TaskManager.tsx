@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, GripVertical, Check, Trash2, Edit2, ChevronDown, ChevronRight, Palette } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -58,6 +58,7 @@ const TaskManager: React.FC = () => {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragOverTask, setDragOverTask] = useState<string | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -284,6 +285,20 @@ const TaskManager: React.FC = () => {
     },
   });
 
+  const batchUpdateTasksMutation = useMutation({
+    mutationFn: async (updates: Array<{ id: string; position: number }>) => {
+      const promises = updates.map(({ id, position }) =>
+        supabase.from('tasks').update({ position }).eq('id', id)
+      );
+      const results = await Promise.all(promises);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) throw errors[0].error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -347,7 +362,7 @@ const TaskManager: React.FC = () => {
     }
   };
 
-  const handleCompleteTask = (task: Task) => {
+  const handleCompleteTask = useCallback((task: Task) => {
     setCompletingTaskId(task.id);
 
     const timer = setTimeout(async () => {
@@ -360,44 +375,44 @@ const TaskManager: React.FC = () => {
     }, 5000);
 
     setUndoTimer(timer);
-  };
+  }, [updateTaskMutation]);
 
-  const handleUndoComplete = () => {
+  const handleUndoComplete = useCallback(() => {
     if (undoTimer) {
       clearTimeout(undoTimer);
       setUndoTimer(null);
       setCompletingTaskId(null);
     }
-  };
+  }, [undoTimer]);
 
-  const handleUncompleteTask = async (task: Task) => {
+  const handleUncompleteTask = useCallback(async (task: Task) => {
     await updateTaskMutation.mutateAsync({
       id: task.id,
       updates: { completed_at: null },
     });
-  };
+  }, [updateTaskMutation]);
 
-  const handleDeleteTask = (taskId: string) => {
+  const handleDeleteTask = useCallback((taskId: string) => {
     setTaskToDelete(taskId);
-  };
+  }, []);
 
-  const confirmDeleteTask = async () => {
+  const confirmDeleteTask = useCallback(async () => {
     if (taskToDelete) {
       await deleteTaskMutation.mutateAsync(taskToDelete);
       setTaskToDelete(null);
     }
-  };
+  }, [taskToDelete, deleteTaskMutation]);
 
-  const handleEditTask = (task: Task) => {
+  const handleEditTask = useCallback((task: Task) => {
     setEditingTask(task.id);
     setEditTitle(task.title);
     setEditDescription(task.description);
     setEditColor(task.color);
     setAddingSubtaskTo(null);
     setSubtaskInput('');
-  };
+  }, []);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     if (!editingTask) return;
 
     await updateTaskMutation.mutateAsync({
@@ -410,9 +425,9 @@ const TaskManager: React.FC = () => {
     });
 
     setEditingTask(null);
-  };
+  }, [editingTask, editTitle, editDescription, editColor, updateTaskMutation]);
 
-  const handleAddSubtask = async (parentTask: Task) => {
+  const handleAddSubtask = useCallback(async (parentTask: Task) => {
     if (!subtaskInput.trim()) return;
 
     const subtaskCount = parentTask.subtasks?.length || 0;
@@ -429,12 +444,14 @@ const TaskManager: React.FC = () => {
     setSubtaskInput('');
     setAddingSubtaskTo(null);
 
-    const newCollapsed = new Set(collapsedTasks);
-    newCollapsed.delete(parentTask.id);
-    setCollapsedTasks(newCollapsed);
-  };
+    setCollapsedTasks(prev => {
+      const newCollapsed = new Set(prev);
+      newCollapsed.delete(parentTask.id);
+      return newCollapsed;
+    });
+  }, [subtaskInput, createTaskMutation]);
 
-  const handleDragStart = (task: Task, e: React.DragEvent) => {
+  const handleDragStart = useCallback((task: Task, e: React.DragEvent) => {
     setDraggedTask(task);
     setDragPosition({ x: e.clientX, y: e.clientY });
 
@@ -442,31 +459,42 @@ const TaskManager: React.FC = () => {
     emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     e.dataTransfer.setDragImage(emptyImg, 0, 0);
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, []);
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = useCallback((e: React.DragEvent) => {
     if (e.clientX === 0 && e.clientY === 0) return;
-    setDragPosition({ x: e.clientX, y: e.clientY });
-  };
 
-  const handleDragEnd = () => {
+    if (dragFrameRef.current) {
+      cancelAnimationFrame(dragFrameRef.current);
+    }
+
+    dragFrameRef.current = requestAnimationFrame(() => {
+      setDragPosition({ x: e.clientX, y: e.clientY });
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    if (dragFrameRef.current) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
     setDragPosition(null);
     setDragOverTask(null);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-  };
+  }, []);
 
-  const handleTaskDragOver = (task: Task, e: React.DragEvent) => {
+  const handleTaskDragOver = useCallback((task: Task, e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (draggedTask && draggedTask.id !== task.id && !task.parent_task_id) {
       setDragOverTask(task.id);
     }
-  };
+  }, [draggedTask]);
 
-  const handleTaskDrop = async (targetTask: Task, e: React.DragEvent) => {
+  const handleTaskDrop = useCallback(async (targetTask: Task, e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -486,12 +514,12 @@ const TaskManager: React.FC = () => {
         columnTasks.splice(draggedIndex, 1);
         columnTasks.splice(targetIndex, 0, draggedTask);
 
-        for (let i = 0; i < columnTasks.length; i++) {
-          await updateTaskMutation.mutateAsync({
-            id: columnTasks[i].id,
-            updates: { position: i },
-          });
-        }
+        const updates = columnTasks.map((task, i) => ({
+          id: task.id,
+          position: i,
+        }));
+
+        await batchUpdateTasksMutation.mutateAsync(updates);
       }
     } else {
       await updateTaskMutation.mutateAsync({
@@ -506,9 +534,9 @@ const TaskManager: React.FC = () => {
     setDraggedTask(null);
     setDragOverTask(null);
     setDragPosition(null);
-  };
+  }, [draggedTask, tasks, batchUpdateTasksMutation, updateTaskMutation]);
 
-  const handleDrop = async (targetColumn: string) => {
+  const handleDrop = useCallback(async (targetColumn: string) => {
     if (!draggedTask) return;
 
     if (draggedTask.column_name !== targetColumn) {
@@ -532,17 +560,19 @@ const TaskManager: React.FC = () => {
     setDraggedTask(null);
     setDragOverTask(null);
     setDragPosition(null);
-  };
+  }, [draggedTask, tasks, updateTaskMutation]);
 
-  const toggleCollapse = (taskId: string) => {
-    const newCollapsed = new Set(collapsedTasks);
-    if (newCollapsed.has(taskId)) {
-      newCollapsed.delete(taskId);
-    } else {
-      newCollapsed.add(taskId);
-    }
-    setCollapsedTasks(newCollapsed);
-  };
+  const toggleCollapse = useCallback((taskId: string) => {
+    setCollapsedTasks(prev => {
+      const newCollapsed = new Set(prev);
+      if (newCollapsed.has(taskId)) {
+        newCollapsed.delete(taskId);
+      } else {
+        newCollapsed.add(taskId);
+      }
+      return newCollapsed;
+    });
+  }, []);
 
   const renderTask = (task: Task, isSubtask = false) => {
     if (task.archived_at) return null;
@@ -735,6 +765,14 @@ const TaskManager: React.FC = () => {
     );
   };
 
+  const tasksByColumn = useMemo(() => {
+    const result: Record<string, Task[]> = {};
+    COLUMNS.forEach(column => {
+      result[column] = tasks.filter(t => t.column_name === column);
+    });
+    return result;
+  }, [tasks]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -779,9 +817,7 @@ const TaskManager: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col lg:flex-row h-full lg:overflow-hidden">
           {COLUMNS.map((column) => {
-            const columnTasks = tasks.filter(
-              (t) => t.column_name === column
-            );
+            const columnTasks = tasksByColumn[column];
 
             return (
               <div
@@ -918,6 +954,7 @@ const TaskManager: React.FC = () => {
             transform: 'translate(-50%, -50%)',
             pointerEvents: 'none',
             zIndex: 9999,
+            willChange: 'transform',
           }}
         >
           <div
